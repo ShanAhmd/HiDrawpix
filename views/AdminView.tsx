@@ -1,145 +1,111 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { auth, signInWithEmailAndPassword, signOut } from '../services/firebase';
-import { listenToOrders, updateOrderStatus } from '../services/firebase';
 import { Order, OrderStatus } from '../types';
+import { listenToOrders, updateOrderStatus, auth, signOut } from '../services/firebase';
 
-const AdminLogin: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const AdminView: React.FC = () => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const inputStyles = "w-full p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
     setLoading(true);
-    setError('');
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (err) {
-      setError('Failed to login. Please check your credentials.');
-    } finally {
+    const unsubscribe = listenToOrders((newOrders) => {
+      setOrders(newOrders);
       setLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
+
+  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+    } catch (err) {
+      console.error("Failed to update status:", err);
+      setError('Failed to update order status. Please try again.');
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Sign out error', error);
+    }
+  };
+
+  const statusOptions: OrderStatus[] = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
+
+  const statusStyles: { [key in OrderStatus]: string } = {
+    Pending: 'bg-amber bg-opacity-20 text-amber',
+    'In Progress': 'bg-blue bg-opacity-20 text-blue',
+    Completed: 'bg-accent bg-opacity-20 text-accent',
+    Cancelled: 'bg-error bg-opacity-20 text-error',
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="w-full max-w-md p-8 space-y-6 glass-card">
-        <h2 className="text-2xl font-bold text-center text-text-primary">Admin Login</h2>
-        <form onSubmit={handleLogin} className="space-y-6">
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required className={inputStyles} />
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required className={inputStyles} />
-          {error && <p className="text-sm text-error">{error}</p>}
-          <button type="submit" disabled={loading} className="w-full bg-accent text-primary-bg py-3 rounded-xl font-semibold hover:bg-opacity-90 transition-all glowing-btn disabled:bg-gray-500 disabled:shadow-none">
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-text-primary">Admin Dashboard</h1>
+        <button
+          onClick={handleSignOut}
+          className="bg-error text-white py-2 px-4 rounded-lg font-semibold hover:bg-opacity-90 transition-colors"
+        >
+          Sign Out
+        </button>
+      </div>
+
+      {error && <p className="text-center text-error mb-4">{error}</p>}
+
+      <div className="glass-card p-6 overflow-x-auto">
+        <h2 className="text-2xl font-bold text-text-primary mb-4">Live Orders</h2>
+        {loading ? (
+          <p className="text-text-secondary text-center">Loading orders...</p>
+        ) : orders.length === 0 ? (
+          <p className="text-text-secondary text-center">No orders found.</p>
+        ) : (
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-white border-opacity-20">
+                <th className="p-3">Customer</th>
+                <th className="p-3">Contact</th>
+                <th className="p-3">Email</th>
+                <th className="p-3">Details</th>
+                <th className="p-3">Date</th>
+                <th className="p-3">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id} className="border-b border-white border-opacity-10 hover:bg-white hover:bg-opacity-5">
+                  <td className="p-3 align-top">{order.customerName}</td>
+                  <td className="p-3 align-top">{order.contactNumber}</td>
+                  <td className="p-3 align-top">{order.email}</td>
+                  <td className="p-3 align-top max-w-xs whitespace-pre-wrap">{order.details}</td>
+                  <td className="p-3 align-top">{order.createdAt.toDate().toLocaleString()}</td>
+                  <td className="p-3 align-top">
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
+                      className={`w-full p-2 rounded-md border-transparent focus:outline-none focus:ring-2 focus:ring-accent text-sm font-semibold ${statusStyles[order.status]}`}
+                      style={{ backgroundColor: 'transparent' }}
+                    >
+                      {statusOptions.map(status => (
+                        <option key={status} value={status} className="bg-primary-bg text-text-primary">
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
-};
-
-const AdminDashboard: React.FC = () => {
-    const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const unsubscribe = listenToOrders((newOrders) => {
-            setOrders(newOrders);
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
-
-    const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-        try {
-            await updateOrderStatus(orderId, newStatus);
-        } catch (error) {
-            console.error("Failed to update status:", error);
-            alert("Failed to update status. Please try again.");
-        }
-    };
-    
-    const statusStyles: { [key in OrderStatus]: string } = {
-        Pending: 'bg-amber text-black',
-        'In Progress': 'bg-blue text-white',
-        Completed: 'bg-accent text-primary-bg',
-        Cancelled: 'bg-error text-white',
-    };
-    const statusOptions: OrderStatus[] = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
-
-    return (
-        <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
-            <div className="container mx-auto">
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-text-primary">Order Dashboard</h1>
-                    <button onClick={() => signOut(auth)} className="bg-error text-white py-2 px-4 rounded-md hover:bg-opacity-90">
-                        Logout
-                    </button>
-                </div>
-
-                <div className="glass-card overflow-hidden">
-                    <div className="overflow-x-auto">
-                        {loading ? (
-                            <p className="p-6 text-center text-text-secondary">Loading orders...</p>
-                        ) : orders.length === 0 ? (
-                            <p className="p-6 text-center text-text-secondary">No orders found.</p>
-                        ) : (
-                            <table className="w-full min-w-max table-auto">
-                                <thead className="bg-black bg-opacity-20">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Date</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Customer</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Details</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {orders.map((order) => (
-                                        <tr key={order.id} className="border-b border-white border-opacity-10">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{new Date(order.createdAt.seconds * 1000).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-medium text-text-primary">{order.customerName}</div>
-                                                <div className="text-sm text-text-secondary">{order.email}</div>
-                                                <div className="text-sm text-text-secondary">{order.contactNumber}</div>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-text-secondary max-w-sm break-words">{order.details}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <select 
-                                                    value={order.status} 
-                                                    onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
-                                                    className={`p-2 rounded-md text-sm border-none outline-none appearance-none ${statusStyles[order.status]}`}
-                                                >
-                                                    {statusOptions.map(status => (
-                                                        <option key={status} value={status} className="bg-primary-bg text-white">{status}</option>
-                                                    ))}
-                                                </select>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-const AdminView: React.FC = () => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent"></div>
-    </div>;
-  }
-
-  return user ? <AdminDashboard /> : <AdminLogin />;
 };
 
 export default AdminView;

@@ -5,20 +5,22 @@ import {
     signInWithEmailAndPassword, 
     signOut, 
     onAuthStateChanged,
-    User
+    User,
+    createUserWithEmailAndPassword
 } from 'firebase/auth';
+// FIX: Switched to named imports for Firebase v9 modular SDK to resolve all Firestore errors.
 import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    getDocs,
+    getFirestore,
+    collection,
+    addDoc,
+    Timestamp,
     query,
     where,
-    doc,
-    updateDoc,
+    getDocs,
+    orderBy,
     onSnapshot,
-    Timestamp,
-    orderBy
+    doc,
+    updateDoc
 } from 'firebase/firestore';
 import { Order, OrderStatus } from '../types';
 
@@ -34,14 +36,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+// FIX: Called getFirestore directly as required by Firebase v9.
 const db = getFirestore(app);
 
+// FIX: Called collection directly as required by Firebase v9.
 const ordersCollection = collection(db, 'orders');
 
 // --- Order Functions ---
 
 export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'createdAt'>) => {
   try {
+    // FIX: Called addDoc and Timestamp directly as required by Firebase v9.
     const docRef = await addDoc(ordersCollection, {
       ...orderData,
       status: 'Pending',
@@ -56,6 +61,7 @@ export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'created
 
 export const getOrderStatus = async (orderId: string): Promise<Order | null> => {
     try {
+        // FIX: Called query, where, and getDocs directly as required by Firebase v9.
         const q = query(ordersCollection, where('__name__', '==', orderId));
         const querySnapshot = await getDocs(q);
         if (querySnapshot.empty) {
@@ -70,6 +76,7 @@ export const getOrderStatus = async (orderId: string): Promise<Order | null> => 
 }
 
 export const listenToOrders = (callback: (orders: Order[]) => void) => {
+    // FIX: Called query, orderBy, and onSnapshot directly as required by Firebase v9.
     const q = query(ordersCollection, orderBy('createdAt', 'desc'));
     return onSnapshot(q, (querySnapshot) => {
         const orders = querySnapshot.docs.map(doc => ({
@@ -82,6 +89,7 @@ export const listenToOrders = (callback: (orders: Order[]) => void) => {
 
 export const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
   try {
+    // FIX: Called doc and updateDoc directly as required by Firebase v9.
     const orderDoc = doc(db, 'orders', orderId);
     await updateDoc(orderDoc, { status });
   } catch (error) {
@@ -93,5 +101,5 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus) =>
 
 // --- Auth Functions ---
 
-export { auth, onAuthStateChanged, signInWithEmailAndPassword, signOut };
+export { auth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword };
 export type { User };
