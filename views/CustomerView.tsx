@@ -1,7 +1,7 @@
-import React, { useState, useRef, useMemo } from 'react';
-import { SERVICES, CREATIONS_IMAGES, OFFERS } from '../constants';
-import { addOrder, getOrderStatus, uploadFile } from '../services/firebase';
-import { Service, Order } from '../types';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { SERVICES } from '../constants';
+import { addOrder, getOrderStatus, uploadImage, listenToPortfolioItems, listenToOffers } from '../services/firebase';
+import { Service, Order, PortfolioItem, Offer } from '../types';
 import Chatbot from '../components/Chatbot';
 import WhatsAppButton from '../components/WhatsAppButton';
 import Footer from '../components/Footer';
@@ -70,7 +70,7 @@ const OrderForm: React.FC<{
       };
 
       if (selectedFile) {
-        const fileURL = await uploadFile(selectedFile);
+        const fileURL = await uploadImage(selectedFile, 'order-attachments');
         orderPayload.fileURL = fileURL;
       }
       
@@ -202,6 +202,17 @@ const OrderStatusChecker: React.FC = () => {
 const CustomerView: React.FC = () => {
     const [formData, setFormData] = useState<FormData>({ customerName: '', contactNumber: '', email: '', details: '', service: '' });
     const orderFormRef = useRef<HTMLDivElement>(null);
+    const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
+    const [offers, setOffers] = useState<Offer[]>([]);
+
+    useEffect(() => {
+        const unsubPortfolio = listenToPortfolioItems(setPortfolioItems);
+        const unsubOffers = listenToOffers(setOffers);
+        return () => {
+            unsubPortfolio();
+            unsubOffers();
+        };
+    }, []);
 
     const handleOrderInfoExtracted = (info: Partial<FormData>) => {
         setFormData(prev => ({ ...prev, ...info }));
@@ -211,6 +222,9 @@ const CustomerView: React.FC = () => {
     const handleScrollToOrder = () => {
         orderFormRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
+
+    const visibleCreations = useMemo(() => portfolioItems.filter(item => item.status === 'Show'), [portfolioItems]);
+    const activeOffers = useMemo(() => offers.filter(offer => offer.status === 'Active'), [offers]);
 
   return (
     <div className="min-h-screen">
@@ -245,37 +259,41 @@ const CustomerView: React.FC = () => {
         </section>
 
         {/* Our Creations Section */}
-        <section id="creations" className="py-16">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 className="text-3xl font-bold text-center text-text-primary mb-12">Our Creations</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {CREATIONS_IMAGES.map((src, index) => (
-                        <div key={index} className="glass-card p-2 group overflow-hidden">
-                            <img src={src} alt={`Creation ${index + 1}`} className="w-full h-full object-cover rounded-lg transform group-hover:scale-110 transition-transform duration-500" />
-                        </div>
-                    ))}
+        {visibleCreations.length > 0 && (
+            <section id="creations" className="py-16">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <h2 className="text-3xl font-bold text-center text-text-primary mb-12">Our Creations</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {visibleCreations.map((item) => (
+                            <div key={item.id} className="glass-card p-2 group overflow-hidden">
+                                <img src={item.imageURL} alt={item.title} className="w-full h-full object-cover rounded-lg transform group-hover:scale-110 transition-transform duration-500" />
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        )}
 
         {/* Special Offers Section */}
-        <section id="offers" className="py-16">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                <h2 className="text-3xl font-bold text-center text-text-primary mb-12">Special Offers</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {OFFERS.map((offer, index) => (
-                        <div key={index} className="glass-card p-6 flex flex-col text-center">
-                            <h3 className="text-xl font-bold text-accent mb-2">{offer.title}</h3>
-                            <p className="text-text-secondary flex-grow mb-4">{offer.description}</p>
-                            <div className="text-3xl font-bold text-white mb-4">{offer.price}</div>
-                            <button onClick={handleScrollToOrder} className="mt-auto bg-accent bg-opacity-20 text-accent py-2 px-6 rounded-xl font-semibold hover:bg-opacity-40 transition-all">
-                                Order Now
-                            </button>
-                        </div>
-                    ))}
+        {activeOffers.length > 0 && (
+            <section id="offers" className="py-16">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <h2 className="text-3xl font-bold text-center text-text-primary mb-12">Special Offers</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {activeOffers.map((offer) => (
+                            <div key={offer.id} className="glass-card p-6 flex flex-col text-center">
+                                <h3 className="text-xl font-bold text-accent mb-2">{offer.title}</h3>
+                                <p className="text-text-secondary flex-grow mb-4">{offer.description}</p>
+                                <div className="text-3xl font-bold text-white mb-4">{offer.price}</div>
+                                <button onClick={handleScrollToOrder} className="mt-auto bg-accent bg-opacity-20 text-accent py-2 px-6 rounded-xl font-semibold hover:bg-opacity-40 transition-all">
+                                    Order Now
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        )}
 
         {/* Order & Status Section */}
         <section id="order" className="py-16">

@@ -18,10 +18,12 @@ import {
     query, 
     orderBy, 
     onSnapshot,
-    updateDoc
+    updateDoc,
+    deleteDoc,
+    serverTimestamp
 } from '@firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Order, OrderStatus } from '../types';
+import { Order, OrderStatus, PortfolioItem, Offer } from '../types';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -42,17 +44,20 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 
 const ordersCollection = collection(db, 'orders');
+const portfolioCollection = collection(db, 'portfolio');
+const offersCollection = collection(db, 'specialOffers');
+
 
 // --- File Upload Function ---
-export const uploadFile = async (file: File): Promise<string> => {
+export const uploadImage = async (file: File, path: string): Promise<string> => {
   try {
-      const storageRef = ref(storage, `order-attachments/${Date.now()}-${file.name}`);
+      const storageRef = ref(storage, `${path}/${Date.now()}-${file.name}`);
       const snapshot = await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
       return downloadURL;
   } catch (error) {
-      console.error("Error uploading file:", error);
-      throw new Error("Could not upload file.");
+      console.error("Error uploading image:", error);
+      throw new Error("Could not upload image.");
   }
 };
 
@@ -105,6 +110,49 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus) =>
     console.error("Error updating order status: ", error);
     throw new Error("Could not update order status.");
   }
+};
+
+// --- Portfolio Functions ---
+export const listenToPortfolioItems = (callback: (items: PortfolioItem[]) => void) => {
+    const q = query(portfolioCollection, orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PortfolioItem));
+        callback(items);
+    });
+};
+
+export const addPortfolioItem = (item: Omit<PortfolioItem, 'id' | 'createdAt'>) => {
+    return addDoc(portfolioCollection, { ...item, createdAt: serverTimestamp() });
+};
+
+export const updatePortfolioItem = (id: string, item: Partial<PortfolioItem>) => {
+    return updateDoc(doc(db, 'portfolio', id), item);
+};
+
+export const deletePortfolioItem = (id: string) => {
+    return deleteDoc(doc(db, 'portfolio', id));
+};
+
+
+// --- Offer Functions ---
+export const listenToOffers = (callback: (items: Offer[]) => void) => {
+    const q = query(offersCollection, orderBy('createdAt', 'desc'));
+    return onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
+        callback(items);
+    });
+};
+
+export const addOffer = (offer: Omit<Offer, 'id' | 'createdAt'>) => {
+    return addDoc(offersCollection, { ...offer, createdAt: serverTimestamp() });
+};
+
+export const updateOffer = (id: string, offer: Partial<Offer>) => {
+    return updateDoc(doc(db, 'specialOffers', id), offer);
+};
+
+export const deleteOffer = (id: string) => {
+    return deleteDoc(doc(db, 'specialOffers', id));
 };
 
 

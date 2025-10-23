@@ -27,3 +27,21 @@ export interface ChatMessage {
   sender: 'user' | 'bot';
   text: string;
 }
+
+export interface PortfolioItem {
+  id: string;
+  title: string;
+  description: string;
+  imageURL: string;
+  status: 'Show' | 'Hide';
+  createdAt: Timestamp;
+}
+
+export interface Offer {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  status: 'Active' | 'Inactive';
+  createdAt: Timestamp;
+}
