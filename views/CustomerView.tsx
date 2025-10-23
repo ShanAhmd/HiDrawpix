@@ -4,7 +4,6 @@ import { addOrder, getOrderStatus, uploadImage, listenToPortfolioItems, listenTo
 import { Service, Order, PortfolioItem, Offer } from '../types';
 import Chatbot from '../components/Chatbot';
 import WhatsAppButton from '../components/WhatsAppButton';
-import Footer from '../components/Footer';
 
 type FormData = {
   customerName: string;
@@ -305,8 +304,7 @@ const CustomerView: React.FC = () => {
           </div>
         </section>
       </main>
-
-      <Footer />
+      
       <WhatsAppButton />
       <Chatbot onOrderInfoExtracted={handleOrderInfoExtracted}/>
     </div>

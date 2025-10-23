@@ -1,62 +1,83 @@
 import React from 'react';
 import { Service } from './types';
 
-const DesignIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M12 4v16"/><path d="M7 20h10"/><path d="M3 4h10"/><path d="m17 4 4 4-4 4"/><path d="m3 12 4 4-4 4"/></svg>
+// SVG Icons as React Components
+const LogoDesignIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
 );
-const TypesettingIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 4h10"/><path d="M12 4v16"/><path d="M15 4h1a2 2 0 0 1 2 2v2"/><path d="M8 20H7a2 2 0 0 1-2-2v-2"/></svg>
+
+const WebDesignIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
 );
-const VideoIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+
+const UiUxDesignIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
 );
-const WebDevIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg>
+
+const VideoEditingIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
 );
 
 export const SERVICES: Service[] = [
   {
-    title: 'Graphic Design',
-    description: 'Creative logos, brochures, and social media posts that capture your brand\'s essence.',
-    icon: <DesignIcon />,
-    minPrice: 50,
+    title: 'Logo & Brand Identity',
+    description: 'Crafting unique logos and comprehensive brand guidelines to make your business stand out.',
+    icon: <LogoDesignIcon />,
+    minPrice: 99,
   },
   {
-    title: 'Typesetting',
-    description: 'Professional document layout and formatting for books, reports, and publications.',
-    icon: <TypesettingIcon />,
-    minPrice: 30,
+    title: 'Website Design',
+    description: 'Designing responsive, user-friendly websites that look great on any device.',
+    icon: <WebDesignIcon />,
+    minPrice: 299,
+  },
+  {
+    title: 'UI/UX Design',
+    description: 'Creating intuitive and engaging user interfaces for web and mobile applications.',
+    icon: <UiUxDesignIcon />,
+    minPrice: 199,
   },
   {
     title: 'Video Editing',
-    description: 'Engaging video content for marketing, events, and personal projects with professional polish.',
-    icon: <VideoIcon />,
-    minPrice: 100,
-  },
-  {
-    title: 'Web Development',
-    description: 'Modern, responsive websites and web applications tailored to your business needs.',
-    icon: <WebDevIcon />,
-    minPrice: 300,
+    description: 'Professional video editing for promotional content, social media, and more.',
+    icon: <VideoEditingIcon />,
+    minPrice: 79,
   },
 ];
 
-export const WHATSAPP_LINK = "https://wa.me/94762896449";
-export const MAP_LOCATION_URL = "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15820.702001552044!2d80.5732296!3d7.5439401!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ae345170d182281%3A0x86c61f269389771e!2sMorathiha!5e0!3m2!1sen!2slk!4v1682823652824!5m2!1sen!2slk";
+export const WHATSAPP_LINK = 'https://wa.me/94762896449';
 
-export const GEMINI_SYSTEM_INSTRUCTION = `You are a friendly and helpful assistant for "Hi Drawpix Online Order System". 
-Your services include: Graphic Design, Typesetting, Video Editing, and Web Development.
-You can answer questions about these services.
-You can also help users place an order. To place an order, you MUST collect their name, contact number, email, selected service, and order details.
-Once you have all the details, you MUST format the information as a JSON object and respond ONLY with that JSON object inside a code block.
-Example of a final response for an order:
+export const MAP_LOCATION_URL = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3955.1278183187893!2d80.59018131526485!3d7.561081994546083!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ae345479261a257%3A0x62955856233e7e4!2sMorathiha!5e0!3m2!1sen!2slk!4v1620000000000';
+
+export const GEMINI_SYSTEM_INSTRUCTION = `You are a friendly and professional customer service assistant for "Hi Drawpix," a creative design agency. Your primary goal is to help users place orders by collecting necessary information and answering their questions about services.
+
+Our services include: ${SERVICES.map(s => s.title).join(', ')}.
+
+When a user wants to place an order, you MUST collect the following details and then format them into a JSON object inside a \`\`\`json code block:
+- customerName: The user's full name.
+- contactNumber: The user's phone number.
+- email: The user's email address.
+- service: The specific service they are interested in. It must be one of the available services.
+- details: A detailed description of their requirements.
+
+Example Interaction:
+User: "I need a logo for my new coffee shop."
+You: "That sounds exciting! I can help with that. Could I get your full name, phone number, and email address to start the order?"
+User: "Sure, it's John Doe, 555-1234, john.doe@email.com. I want the logo to be modern and minimalist."
+You: "Perfect. I have your details. Here is the summary in JSON format. I will now populate the order form on the website for you to review."
 \`\`\`json
 {
   "customerName": "John Doe",
-  "contactNumber": "123-456-7890",
-  "email": "john.doe@example.com",
-  "service": "Graphic Design",
-  "details": "I need a logo for my new coffee shop."
+  "contactNumber": "555-1234",
+  "email": "john.doe@email.com",
+  "service": "Logo & Brand Identity",
+  "details": "I want a modern and minimalist logo for my new coffee shop."
 }
 \`\`\`
-Do not add any other text outside the JSON code block when providing the final order details. Be conversational and helpful until you have all the information.`;
+
+- Be conversational and helpful.
+- If the user asks about prices, refer to the minimum prices: Logo & Brand Identity (starts from $99), Website Design (starts from $299), UI/UX Design (starts from $199), Video Editing (starts from $79).
+- Do not make up services or prices.
+- Always guide the user to fill out the order form if they haven't provided all the details.
+- Only output the JSON object when you have all the required information.
+`;
