@@ -1,4 +1,6 @@
 
+
+
 import { initializeApp } from 'firebase/app';
 import { 
     getAuth, 
@@ -62,13 +64,13 @@ export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'created
 export const getOrderStatus = async (orderId: string): Promise<Order | null> => {
     try {
         // FIX: Called query, where, and getDocs directly as required by Firebase v9.
-        const q = query(ordersCollection, where('__name__', '==', orderId));
+        const q = query(collection(db, 'orders'), where('__name__', '==', orderId));
         const querySnapshot = await getDocs(q);
         if (querySnapshot.empty) {
             return null;
         }
-        const doc = querySnapshot.docs[0];
-        return { id: doc.id, ...doc.data() } as Order;
+        const docData = querySnapshot.docs[0];
+        return { id: docData.id, ...docData.data() } as Order;
     } catch (error) {
         console.error("Error getting order status:", error);
         throw new Error("Could not fetch order status.");
