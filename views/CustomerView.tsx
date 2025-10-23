@@ -30,8 +30,11 @@ const OrderForm: React.FC<{
 }> = ({ formData, setFormData, orderFormRef }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
   const [fileName, setFileName] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [copyButtonText, setCopyButtonText] = useState('Copy');
   
   const inputStyles = "w-full p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
 
@@ -42,9 +45,16 @@ const OrderForm: React.FC<{
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear messages when user starts editing
+    setMessage('');
+    setError('');
+    setOrderId(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage('');
+    setError('');
+    setOrderId(null);
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setFileName(file.name);
@@ -55,14 +65,25 @@ const OrderForm: React.FC<{
     }
   };
 
+  const handleCopy = () => {
+    if (orderId) {
+        navigator.clipboard.writeText(orderId).then(() => {
+            setCopyButtonText('Copied!');
+            setTimeout(() => setCopyButtonText('Copy'), 2000);
+        });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.service) {
-      setMessage("Please select a service.");
+      setError("Please select a service.");
       return;
     }
     setLoading(true);
     setMessage('');
+    setError('');
+    setOrderId(null);
     try {
       const orderPayload: Partial<Omit<Order, 'id' | 'status' | 'createdAt'>> & FormData = {
         ...formData,
@@ -73,15 +94,16 @@ const OrderForm: React.FC<{
         orderPayload.fileURL = fileURL;
       }
       
-      const orderId = await addOrder(orderPayload as Omit<Order, 'id' | 'status' | 'createdAt'>);
+      const newOrderId = await addOrder(orderPayload as Omit<Order, 'id' | 'status' | 'createdAt'>);
       
-      setMessage(`Your order has been placed successfully! Your Order ID is: ${orderId}`);
+      setMessage(`Your order has been placed successfully!`);
+      setOrderId(newOrderId);
       setFormData({ customerName: '', contactNumber: '', email: '', details: '', service: '' });
       setFileName('');
       setSelectedFile(null);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to place order. Please try again.";
-      setMessage(errorMessage);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -125,7 +147,21 @@ const OrderForm: React.FC<{
           {loading ? 'Placing Order...' : 'Submit Order'}
         </button>
       </form>
-      {message && <p className={`mt-4 text-center text-sm font-medium p-3 rounded-md ${message.includes('success') ? 'bg-accent bg-opacity-20 text-accent' : 'bg-error bg-opacity-20 text-error'}`}>{message}</p>}
+      {message && <p className="mt-4 text-center text-sm font-medium p-3 rounded-md bg-accent bg-opacity-20 text-accent">{message}</p>}
+      {orderId && (
+          <div className="mt-4 p-3 bg-accent bg-opacity-20 rounded-xl flex items-center justify-between gap-4">
+              <span className="text-sm text-accent break-all">
+                  <strong>Order ID:</strong> {orderId}
+              </span>
+              <button 
+                  onClick={handleCopy}
+                  className="bg-accent text-primary-bg py-1 px-3 rounded-md text-sm font-semibold hover:bg-opacity-90 transition-all flex-shrink-0"
+              >
+                  {copyButtonText}
+              </button>
+          </div>
+      )}
+      {error && <p className="mt-4 text-center text-sm font-medium p-3 rounded-md bg-error bg-opacity-20 text-error">{error}</p>}
     </div>
   );
 };
@@ -137,7 +173,7 @@ const OrderStatusChecker: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
-    const inputStyles = "flex-grow p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
+    const inputStyles = "flex-grow w-full p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
 
     const handleCheckStatus = async () => {
         if (!orderId.trim()) return;
@@ -173,15 +209,15 @@ const OrderStatusChecker: React.FC = () => {
                     type="text"
                     value={orderId}
                     onChange={(e) => setOrderId(e.target.value)}
-                    placeholder="Enter Your Order ID"
+                    placeholder="Enter or Paste Your Order ID"
                     className={inputStyles}
                 />
                 <button
                     onClick={handleCheckStatus}
                     disabled={loading}
-                    className="bg-text-secondary bg-opacity-50 text-white py-3 px-6 rounded-xl font-semibold hover:bg-opacity-70 transition-colors disabled:bg-gray-600"
+                    className="flex-shrink-0 bg-accent text-primary-bg py-3 px-5 rounded-xl font-semibold hover:bg-opacity-90 transition-colors disabled:bg-gray-600"
                 >
-                    {loading ? 'Checking...' : 'Check Status'}
+                    {loading ? 'Checking...' : 'Check'}
                 </button>
             </div>
             {message && <p className="mt-4 text-center text-sm font-medium text-error">{message}</p>}

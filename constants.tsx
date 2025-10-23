@@ -10,8 +10,8 @@ const WebDesignIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
 );
 
-const UiUxDesignIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+const TypesettingIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
 );
 
 const VideoEditingIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -32,10 +32,10 @@ export const SERVICES: Service[] = [
     minPrice: 299,
   },
   {
-    title: 'UI/UX Design',
-    description: 'Creating intuitive and engaging user interfaces for web and mobile applications.',
-    icon: <UiUxDesignIcon />,
-    minPrice: 199,
+    title: 'Typesetting',
+    description: 'Professional typesetting for documents, books, and reports, ensuring a clean and readable layout.',
+    icon: <TypesettingIcon />,
+    minPrice: 49,
   },
   {
     title: 'Video Editing',
@@ -76,7 +76,7 @@ You: "Perfect. I have your details. Here is the summary in JSON format. I will n
 \`\`\`
 
 - Be conversational and helpful.
-- If the user asks about prices, refer to the minimum prices: Logo & Brand Identity (starts from $99), Website Design (starts from $299), UI/UX Design (starts from $199), Video Editing (starts from $79).
+- If the user asks about prices, refer to the minimum prices: Logo & Brand Identity (starts from $99), Website Design (starts from $299), Typesetting (starts from $49), Video Editing (starts from $79).
 - Do not make up services or prices.
 - Always guide the user to fill out the order form if they haven't provided all the details.
 - Only output the JSON object when you have all the required information.
