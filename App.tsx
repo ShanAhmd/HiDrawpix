@@ -1,14 +1,21 @@
-
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import CustomerView from './views/CustomerView';
 import AdminView from './views/AdminView';
 import AdminSignIn from './views/AdminSignIn';
 import AdminSignUp from './views/AdminSignUp';
+import AboutView from './views/AboutView';
+import TermsView from './views/TermsView';
 import { useAuth } from './hooks/useAuth';
+import WhatsAppButton from './components/WhatsAppButton';
+import Chatbot from './components/Chatbot';
+
+
+type View = 'customer' | 'admin' | 'about' | 'terms';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'customer' | 'admin'>('customer');
+  const [currentView, setCurrentView] = useState<View>('customer');
   const [adminPage, setAdminPage] = useState<'signin' | 'signup'>('signin');
   const { user, loading } = useAuth();
 
@@ -17,6 +24,8 @@ const App: React.FC = () => {
     if (currentView !== 'admin') {
       setAdminPage('signin');
     }
+     // Scroll to top on view change
+    window.scrollTo(0, 0);
   }, [currentView]);
 
 
@@ -29,14 +38,15 @@ const App: React.FC = () => {
         </div>
       );
     }
-
-    if (currentView === 'customer') {
-      return <CustomerView />;
-    }
     
-    // If the selected view is 'admin', decide whether to show
-    // the sign-in page or the dashboard based on auth state.
-    if (currentView === 'admin') {
+    switch (currentView) {
+      case 'customer':
+        return <CustomerView />;
+      case 'about':
+        return <AboutView />;
+      case 'terms':
+        return <TermsView />;
+      case 'admin':
         if (user) {
             return <AdminView />;
         }
@@ -44,17 +54,20 @@ const App: React.FC = () => {
             return <AdminSignIn onSwitchToSignUp={() => setAdminPage('signup')} />;
         }
         return <AdminSignUp onSwitchToSignIn={() => setAdminPage('signin')} />;
+      default:
+        return <CustomerView />;
     }
-
-    // Fallback to customer view
-    return <CustomerView />;
   };
 
+  const headerView = currentView === 'admin' ? 'admin' : 'customer';
+  const showCustomerComponents = currentView === 'customer';
+  const showFooter = currentView !== 'admin';
 
   return (
     <div className="antialiased">
-      <Header currentView={currentView} setView={setCurrentView} />
+      <Header currentView={headerView} setView={(v) => setCurrentView(v as View)} />
       {renderContent()}
+      {showFooter && <Footer setView={setCurrentView} />}
     </div>
   );
 };

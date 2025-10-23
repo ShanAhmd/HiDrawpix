@@ -58,6 +58,20 @@
       .animation-delay-4000 {
         animation-delay: 4s;
       }
+      /* Notification Animation */
+      @keyframes fade-in-down {
+        0% {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-fade-in-down {
+        animation: fade-in-down 0.5s ease-out forwards;
+      }
     </style>
     <script>
       tailwind.config = {
@@ -84,7 +98,8 @@
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "firebase/": "https://aistudiocdn.com/firebase@^12.4.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.26.0"
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.26.0",
+    "@firebase/firestore": "https://aistudiocdn.com/@firebase/firestore@^4.9.2"
   }
 }
 </script>

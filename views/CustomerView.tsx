@@ -1,13 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { SERVICES } from '../constants';
-import { addOrder, getOrderStatus } from '../services/firebase';
-import { Service, Order } from '../types';
+import { addOrder, getOrderStatus, uploadImage, listenToPortfolioItems, listenToOffers } from '../services/firebase';
+import { Service, Order, PortfolioItem, Offer } from '../types';
 import Chatbot from '../components/Chatbot';
 import WhatsAppButton from '../components/WhatsAppButton';
-import Footer from '../components/Footer';
+
+type FormData = {
+  customerName: string;
+  contactNumber: string;
+  email: string;
+  details: string;
+  service: string;
+};
 
 const ServiceCard: React.FC<{ service: Service }> = ({ service }) => (
-  <div className="glass-card p-6 text-center flex flex-col items-center hover:-translate-y-2 transition-transform duration-300">
+  <div className="glass-card p-6 text-center flex flex-col items-center hover:-translate-y-2 transition-transform duration-300 h-full">
     <div className="flex items-center justify-center h-16 w-16 rounded-full bg-accent bg-opacity-20 mb-4">
       {React.cloneElement(service.icon, { className: "h-8 w-8 text-accent" })}
     </div>
@@ -17,30 +24,86 @@ const ServiceCard: React.FC<{ service: Service }> = ({ service }) => (
 );
 
 const OrderForm: React.FC<{
-  formData: { customerName: string; contactNumber: string; email: string; details: string; };
-  setFormData: React.Dispatch<React.SetStateAction<{ customerName: string; contactNumber: string; email: string; details: string; }>>;
+  formData: FormData;
+  setFormData: React.Dispatch<React.SetStateAction<FormData>>;
   orderFormRef: React.RefObject<HTMLDivElement>;
 }> = ({ formData, setFormData, orderFormRef }) => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-
-  const inputStyles = "w-full p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
+  const [error, setError] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [copyButtonText, setCopyButtonText] = useState('Copy');
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const inputStyles = "w-full p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
+
+  const selectedService = useMemo(() => {
+    return SERVICES.find(s => s.title === formData.service);
+  }, [formData.service]);
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear messages when user starts editing
+    setMessage('');
+    setError('');
+    setOrderId(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage('');
+    setError('');
+    setOrderId(null);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setFileName(file.name);
+      setSelectedFile(file);
+    } else {
+      setFileName('');
+      setSelectedFile(null);
+    }
+  };
+
+  const handleCopy = () => {
+    if (orderId) {
+        navigator.clipboard.writeText(orderId).then(() => {
+            setCopyButtonText('Copied!');
+            setTimeout(() => setCopyButtonText('Copy'), 2000);
+        });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.service) {
+      setError("Please select a service.");
+      return;
+    }
     setLoading(true);
     setMessage('');
+    setError('');
+    setOrderId(null);
     try {
-      const orderId = await addOrder(formData);
-      setMessage(`Your order has been placed successfully! Your Order ID is: ${orderId}`);
-      setFormData({ customerName: '', contactNumber: '', email: '', details: '' });
+      const orderPayload: Partial<Omit<Order, 'id' | 'status' | 'createdAt'>> & FormData = {
+        ...formData,
+      };
+
+      if (selectedFile) {
+        const fileURL = await uploadImage(selectedFile, 'order-attachments');
+        orderPayload.fileURL = fileURL;
+      }
+      
+      const newOrderId = await addOrder(orderPayload as Omit<Order, 'id' | 'status' | 'createdAt'>);
+      
+      setMessage(`Your order has been placed successfully!`);
+      setOrderId(newOrderId);
+      setFormData({ customerName: '', contactNumber: '', email: '', details: '', service: '' });
+      setFileName('');
+      setSelectedFile(null);
     } catch (error) {
-      setMessage("Failed to place order. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to place order. Please try again.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -55,12 +118,50 @@ const OrderForm: React.FC<{
           <input type="text" name="contactNumber" value={formData.contactNumber} onChange={handleChange} placeholder="Contact Number" required className={inputStyles} />
         </div>
         <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email Address" required className={inputStyles} />
+        
+        <div className="relative">
+          <select name="service" value={formData.service} onChange={handleChange} required className={`${inputStyles} appearance-none`}>
+            <option value="" disabled>Select a service...</option>
+            {SERVICES.map(s => <option key={s.title} value={s.title}>{s.title}</option>)}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+          </div>
+        </div>
+        
+        {selectedService?.minPrice && (
+            <p className="text-sm text-center text-accent -mt-2">Starts from ${selectedService.minPrice}</p>
+        )}
+        
         <textarea name="details" value={formData.details} onChange={handleChange} placeholder="Order Details (e.g., I need a logo for...)" rows={4} required className={inputStyles} />
+
+        <div>
+            <label htmlFor="file-upload" className={`${inputStyles} cursor-pointer flex items-center justify-between`}>
+                <span className={fileName ? 'text-white' : 'text-gray-400'}>{fileName || 'Attach a file (optional)'}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+            </label>
+            <input id="file-upload" name="file-upload" type="file" className="sr-only" onChange={handleFileChange} />
+        </div>
+
         <button type="submit" disabled={loading} className="w-full bg-accent text-primary-bg py-3 px-6 rounded-xl font-semibold hover:bg-opacity-90 transition-all glowing-btn disabled:bg-gray-500 disabled:shadow-none">
           {loading ? 'Placing Order...' : 'Submit Order'}
         </button>
       </form>
-      {message && <p className={`mt-4 text-center text-sm font-medium p-3 rounded-md ${message.includes('success') ? 'bg-accent bg-opacity-20 text-accent' : 'bg-error bg-opacity-20 text-error'}`}>{message}</p>}
+      {message && <p className="mt-4 text-center text-sm font-medium p-3 rounded-md bg-accent bg-opacity-20 text-accent">{message}</p>}
+      {orderId && (
+          <div className="mt-4 p-3 bg-accent bg-opacity-20 rounded-xl flex items-center justify-between gap-4">
+              <span className="text-sm text-accent break-all">
+                  <strong>Order ID:</strong> {orderId}
+              </span>
+              <button 
+                  onClick={handleCopy}
+                  className="bg-accent text-primary-bg py-1 px-3 rounded-md text-sm font-semibold hover:bg-opacity-90 transition-all flex-shrink-0"
+              >
+                  {copyButtonText}
+              </button>
+          </div>
+      )}
+      {error && <p className="mt-4 text-center text-sm font-medium p-3 rounded-md bg-error bg-opacity-20 text-error">{error}</p>}
     </div>
   );
 };
@@ -72,7 +173,7 @@ const OrderStatusChecker: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
 
-    const inputStyles = "flex-grow p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
+    const inputStyles = "flex-grow w-full p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
 
     const handleCheckStatus = async () => {
         if (!orderId.trim()) return;
@@ -108,15 +209,15 @@ const OrderStatusChecker: React.FC = () => {
                     type="text"
                     value={orderId}
                     onChange={(e) => setOrderId(e.target.value)}
-                    placeholder="Enter Your Order ID"
+                    placeholder="Enter or Paste Your Order ID"
                     className={inputStyles}
                 />
                 <button
                     onClick={handleCheckStatus}
                     disabled={loading}
-                    className="bg-text-secondary bg-opacity-50 text-white py-3 px-6 rounded-xl font-semibold hover:bg-opacity-70 transition-colors disabled:bg-gray-600"
+                    className="flex-shrink-0 bg-accent text-primary-bg py-3 px-5 rounded-xl font-semibold hover:bg-opacity-90 transition-colors disabled:bg-gray-600"
                 >
-                    {loading ? 'Checking...' : 'Check Status'}
+                    {loading ? 'Checking...' : 'Check'}
                 </button>
             </div>
             {message && <p className="mt-4 text-center text-sm font-medium text-error">{message}</p>}
@@ -124,6 +225,7 @@ const OrderStatusChecker: React.FC = () => {
                 <div className="mt-6 p-4 border border-white border-opacity-20 rounded-lg space-y-2">
                     <p><strong>Order ID:</strong> {order.id}</p>
                     <p><strong>Customer:</strong> {order.customerName}</p>
+                    <p><strong>Service:</strong> {order.service}</p>
                     <p><strong>Status:</strong> <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusStyles[order.status]}`}>{order.status}</span></p>
                 </div>
             )}
@@ -133,17 +235,31 @@ const OrderStatusChecker: React.FC = () => {
 
 
 const CustomerView: React.FC = () => {
-    const [formData, setFormData] = useState({ customerName: '', contactNumber: '', email: '', details: '' });
+    const [formData, setFormData] = useState<FormData>({ customerName: '', contactNumber: '', email: '', details: '', service: '' });
     const orderFormRef = useRef<HTMLDivElement>(null);
+    const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
+    const [offers, setOffers] = useState<Offer[]>([]);
 
-    const handleOrderInfoExtracted = (info: typeof formData) => {
-        setFormData(info);
+    useEffect(() => {
+        const unsubPortfolio = listenToPortfolioItems(setPortfolioItems);
+        const unsubOffers = listenToOffers(setOffers);
+        return () => {
+            unsubPortfolio();
+            unsubOffers();
+        };
+    }, []);
+
+    const handleOrderInfoExtracted = (info: Partial<FormData>) => {
+        setFormData(prev => ({ ...prev, ...info }));
         orderFormRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
     const handleScrollToOrder = () => {
         orderFormRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
+
+    const visibleCreations = useMemo(() => portfolioItems.filter(item => item.status === 'Show'), [portfolioItems]);
+    const activeOffers = useMemo(() => offers.filter(offer => offer.status === 'Active'), [offers]);
 
   return (
     <div className="min-h-screen">
@@ -177,6 +293,43 @@ const CustomerView: React.FC = () => {
           </div>
         </section>
 
+        {/* Our Creations Section */}
+        {visibleCreations.length > 0 && (
+            <section id="creations" className="py-16">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <h2 className="text-3xl font-bold text-center text-text-primary mb-12">Our Creations</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {visibleCreations.map((item) => (
+                            <div key={item.id} className="glass-card p-2 group overflow-hidden">
+                                <img src={item.imageURL} alt={item.title} className="w-full h-full object-cover rounded-lg transform group-hover:scale-110 transition-transform duration-500" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+        )}
+
+        {/* Special Offers Section */}
+        {activeOffers.length > 0 && (
+            <section id="offers" className="py-16">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                    <h2 className="text-3xl font-bold text-center text-text-primary mb-12">Special Offers</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {activeOffers.map((offer) => (
+                            <div key={offer.id} className="glass-card p-6 flex flex-col text-center">
+                                <h3 className="text-xl font-bold text-accent mb-2">{offer.title}</h3>
+                                <p className="text-text-secondary flex-grow mb-4">{offer.description}</p>
+                                <div className="text-3xl font-bold text-white mb-4">{offer.price}</div>
+                                <button onClick={handleScrollToOrder} className="mt-auto bg-accent bg-opacity-20 text-accent py-2 px-6 rounded-xl font-semibold hover:bg-opacity-40 transition-all">
+                                    Order Now
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+        )}
+
         {/* Order & Status Section */}
         <section id="order" className="py-16">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -187,8 +340,7 @@ const CustomerView: React.FC = () => {
           </div>
         </section>
       </main>
-
-      <Footer />
+      
       <WhatsAppButton />
       <Chatbot onOrderInfoExtracted={handleOrderInfoExtracted}/>
     </div>
