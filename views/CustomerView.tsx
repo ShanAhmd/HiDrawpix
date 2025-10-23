@@ -65,14 +65,16 @@ const OrderForm: React.FC<{
     setLoading(true);
     setMessage('');
     try {
-      let fileURL: string | undefined = undefined;
+      const orderPayload: Partial<Omit<Order, 'id' | 'status' | 'createdAt'>> & FormData = {
+        ...formData,
+      };
+
       if (selectedFile) {
-        // Upload the file and get the URL
-        fileURL = await uploadFile(selectedFile);
+        const fileURL = await uploadFile(selectedFile);
+        orderPayload.fileURL = fileURL;
       }
       
-      const orderData = { ...formData, fileURL };
-      const orderId = await addOrder(orderData);
+      const orderId = await addOrder(orderPayload as Omit<Order, 'id' | 'status' | 'createdAt'>);
       
       setMessage(`Your order has been placed successfully! Your Order ID is: ${orderId}`);
       setFormData({ customerName: '', contactNumber: '', email: '', details: '', service: '' });

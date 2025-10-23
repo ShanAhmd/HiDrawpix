@@ -28,7 +28,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBybr54q7CGz3SvRQ0LMFPq6bST4uQmiZ0",
   authDomain: "hi-drawpix.firebaseapp.com",
   projectId: "hi-drawpix",
-  storageBucket: "hi-drawpix.appspot.com",
+  storageBucket: "hi-drawpix.firebasestorage.app",
   messagingSenderId: "1028714121791",
   appId: "1:1028714121791:web:dce4707a92bb9982fcc68a",
   measurementId: "G-8K4BREDZJ1"
