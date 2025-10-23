@@ -1,5 +1,6 @@
 
 import { initializeApp } from 'firebase/app';
+import { getAnalytics } from "firebase/analytics";
 import { 
     getAuth, 
     signInWithEmailAndPassword, 
@@ -26,16 +27,18 @@ import { Order, OrderStatus } from '../types';
 
 // IMPORTANT: Replace with your actual Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBybr54q7CGz3SvRQ0LMFPq6bST4uQmiZ0",
+  authDomain: "hi-drawpix.firebaseapp.com",
+  projectId: "hi-drawpix",
+  storageBucket: "hi-drawpix.firebasestorage.app",
+  messagingSenderId: "1028714121791",
+  appId: "1:1028714121791:web:dce4707a92bb9982fcc68a",
+  measurementId: "G-8K4BREDZJ1"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const analytics = getAnalytics(app);
 // FIX: Called getFirestore directly as required by Firebase v9.
 const db = getFirestore(app);
 
