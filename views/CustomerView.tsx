@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { SERVICES, CREATIONS_IMAGES, OFFERS } from '../constants';
-import { addOrder, getOrderStatus } from '../services/firebase';
+import { addOrder, getOrderStatus, uploadFile } from '../services/firebase';
 import { Service, Order } from '../types';
 import Chatbot from '../components/Chatbot';
 import WhatsAppButton from '../components/WhatsAppButton';
@@ -32,6 +32,7 @@ const OrderForm: React.FC<{
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [fileName, setFileName] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   const inputStyles = "w-full p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
 
@@ -46,11 +47,12 @@ const OrderForm: React.FC<{
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFileName(e.target.files[0].name);
-      // NOTE: File upload logic to Firebase Storage would be implemented here.
-      // For this version, we are just capturing the file name.
+      const file = e.target.files[0];
+      setFileName(file.name);
+      setSelectedFile(file);
     } else {
       setFileName('');
+      setSelectedFile(null);
     }
   };
 
@@ -63,12 +65,22 @@ const OrderForm: React.FC<{
     setLoading(true);
     setMessage('');
     try {
-      const orderId = await addOrder(formData);
+      let fileURL: string | undefined = undefined;
+      if (selectedFile) {
+        // Upload the file and get the URL
+        fileURL = await uploadFile(selectedFile);
+      }
+      
+      const orderData = { ...formData, fileURL };
+      const orderId = await addOrder(orderData);
+      
       setMessage(`Your order has been placed successfully! Your Order ID is: ${orderId}`);
       setFormData({ customerName: '', contactNumber: '', email: '', details: '', service: '' });
       setFileName('');
+      setSelectedFile(null);
     } catch (error) {
-      setMessage("Failed to place order. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to place order. Please try again.";
+      setMessage(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -1,13 +1,10 @@
-
 import React from 'react';
-// FIX: Switched to a named import for Timestamp to fix module resolution errors with Firebase v9.
-import { Timestamp } from 'firebase/firestore';
+// FIX: Changed import path from 'firebase/firestore' to '@firebase/firestore' to resolve module export errors.
+import { Timestamp } from '@firebase/firestore';
 
 export interface Service {
   title: string;
   description: string;
-  // FIX: Use React.ReactElement to explicitly specify the type and avoid issues with the JSX namespace.
-  // FIX: Narrowing the type of icon to include SVGProps to fix cloneElement error.
   icon: React.ReactElement<React.SVGProps<SVGSVGElement>>;
   minPrice?: number;
 }
@@ -23,6 +20,7 @@ export interface Order {
   service: string;
   status: OrderStatus;
   createdAt: Timestamp;
+  fileURL?: string;
 }
 
 export interface ChatMessage {

@@ -1,26 +1,17 @@
-import { GoogleGenAI, Content } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { ChatMessage } from '../types';
 import { GEMINI_SYSTEM_INSTRUCTION } from '../constants';
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  // This is a fallback for development. In a real deployment, the key should be set.
-  console.warn("Gemini API key not found. AI Assistant will not work.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY as string });
+// Per coding guidelines, initialize GoogleGenAI directly with the API key from environment variables.
+// The API key is assumed to be available and valid.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const model = 'gemini-2.5-flash';
 
 export const getChatbotResponse = async (history: ChatMessage[], newMessage: string): Promise<string> => {
-  if (!API_KEY) {
-    return "I'm sorry, my connection to the AI service is not configured. Please contact support.";
-  }
-
   try {
-    // FIX: Construct the conversation history in the format Gemini API expects for multi-turn chat.
-    const contents: Content[] = [
+    // Construct the conversation history in the format Gemini API expects for multi-turn chat.
+    const contents = [
       ...history.map(msg => ({
         role: msg.sender === 'user' ? 'user' : 'model',
         parts: [{ text: msg.text }],
@@ -31,6 +22,7 @@ export const getChatbotResponse = async (history: ChatMessage[], newMessage: str
       }
     ];
 
+    // Use ai.models.generateContent instead of a separate model instance.
     const response = await ai.models.generateContent({
         model,
         contents: contents,
@@ -39,6 +31,7 @@ export const getChatbotResponse = async (history: ChatMessage[], newMessage: str
         },
     });
 
+    // Correctly access the text response.
     return response.text;
   } catch (error) {
     console.error("Error getting response from Gemini:", error);

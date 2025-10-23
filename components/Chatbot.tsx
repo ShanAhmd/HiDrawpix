@@ -3,7 +3,7 @@ import { getChatbotResponse } from '../services/geminiService';
 import { ChatMessage } from '../types';
 
 interface ChatbotProps {
-    onOrderInfoExtracted: (info: { customerName: string; contactNumber: string; email: string; details: string; }) => void;
+    onOrderInfoExtracted: (info: { customerName: string; contactNumber: string; email: string; details: string; service: string; }) => void;
 }
 
 const Chatbot: React.FC<ChatbotProps> = ({ onOrderInfoExtracted }) => {

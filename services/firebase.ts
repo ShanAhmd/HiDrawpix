@@ -1,7 +1,4 @@
-
-
-
-import { initializeApp } from 'firebase/app';
+import { initializeApp } from "firebase/app";
 import { 
     getAuth, 
     signInWithEmailAndPassword, 
@@ -10,45 +7,59 @@ import {
     User,
     createUserWithEmailAndPassword
 } from 'firebase/auth';
-// FIX: Switched to named imports for Firebase v9 modular SDK to resolve all Firestore errors.
+// FIX: Changed import path from 'firebase/firestore' to '@firebase/firestore' to resolve module export errors.
 import { 
-    getFirestore,
-    collection,
-    addDoc,
-    Timestamp,
-    query,
-    where,
-    getDocs,
-    orderBy,
+    getFirestore, 
+    collection, 
+    addDoc, 
+    Timestamp, 
+    doc, 
+    getDoc, 
+    query, 
+    orderBy, 
     onSnapshot,
-    doc,
     updateDoc
-} from 'firebase/firestore';
+} from '@firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Order, OrderStatus } from '../types';
 
-// IMPORTANT: Replace with your actual Firebase configuration
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBybr54q7CGz3SvRQ0LMFPq6bST4uQmiZ0",
+  authDomain: "hi-drawpix.firebaseapp.com",
+  projectId: "hi-drawpix",
+  storageBucket: "hi-drawpix.appspot.com",
+  messagingSenderId: "1028714121791",
+  appId: "1:1028714121791:web:dce4707a92bb9982fcc68a",
+  measurementId: "G-8K4BREDZJ1"
 };
 
+
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-// FIX: Called getFirestore directly as required by Firebase v9.
 const db = getFirestore(app);
+const storage = getStorage(app);
 
-// FIX: Called collection directly as required by Firebase v9.
 const ordersCollection = collection(db, 'orders');
+
+// --- File Upload Function ---
+export const uploadFile = async (file: File): Promise<string> => {
+  try {
+      const storageRef = ref(storage, `order-attachments/${Date.now()}-${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      return downloadURL;
+  } catch (error) {
+      console.error("Error uploading file:", error);
+      throw new Error("Could not upload file.");
+  }
+};
 
 // --- Order Functions ---
 
 export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'createdAt'>) => {
   try {
-    // FIX: Called addDoc and Timestamp directly as required by Firebase v9.
     const docRef = await addDoc(ordersCollection, {
       ...orderData,
       status: 'Pending',
@@ -63,14 +74,12 @@ export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'created
 
 export const getOrderStatus = async (orderId: string): Promise<Order | null> => {
     try {
-        // FIX: Called query, where, and getDocs directly as required by Firebase v9.
-        const q = query(collection(db, 'orders'), where('__name__', '==', orderId));
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) {
+        const orderDocRef = doc(db, 'orders', orderId);
+        const docSnapshot = await getDoc(orderDocRef);
+        if (!docSnapshot.exists()) {
             return null;
         }
-        const docData = querySnapshot.docs[0];
-        return { id: docData.id, ...docData.data() } as Order;
+        return { id: docSnapshot.id, ...docSnapshot.data() } as Order;
     } catch (error) {
         console.error("Error getting order status:", error);
         throw new Error("Could not fetch order status.");
@@ -78,7 +87,6 @@ export const getOrderStatus = async (orderId: string): Promise<Order | null> => 
 }
 
 export const listenToOrders = (callback: (orders: Order[]) => void) => {
-    // FIX: Called query, orderBy, and onSnapshot directly as required by Firebase v9.
     const q = query(ordersCollection, orderBy('createdAt', 'desc'));
     return onSnapshot(q, (querySnapshot) => {
         const orders = querySnapshot.docs.map(doc => ({
@@ -91,9 +99,8 @@ export const listenToOrders = (callback: (orders: Order[]) => void) => {
 
 export const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
   try {
-    // FIX: Called doc and updateDoc directly as required by Firebase v9.
-    const orderDoc = doc(db, 'orders', orderId);
-    await updateDoc(orderDoc, { status });
+    const orderDocRef = doc(db, 'orders', orderId);
+    await updateDoc(orderDocRef, { status });
   } catch (error) {
     console.error("Error updating order status: ", error);
     throw new Error("Could not update order status.");
