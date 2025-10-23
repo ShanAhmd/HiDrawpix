@@ -1,0 +1,5 @@
+{
+  "name": "Hi Drawpix Online Order System",
+  "description": "A responsive web app for Hi Drawpix to manage online orders for services like graphic design, video editing, and web development. Customers can place orders, check status, and chat with an AI assistant. Admins can manage all orders through a secure dashboard.",
+  "requestFramePermissions": []
+}
