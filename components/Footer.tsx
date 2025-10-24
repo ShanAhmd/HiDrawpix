@@ -33,9 +33,9 @@ const Footer: React.FC<FooterProps> = ({ setView }) => {
           <div>
             <h3 className="text-lg font-semibold text-text-primary mb-4">Contact Us</h3>
             <ul className="space-y-2 text-text-secondary">
-              <li>Email: contact@hidrawpix.com</li>
+              <li>Email: shanahamedal20@gmail.com</li>
               <li>Phone: +94 76 289 6449</li>
-              <li>Address: Warakawehara, Morathiha, Sri Lanka</li>
+              <li>Address: Kurunegala, Ridigama, Sri Lanka</li>
               <li>
                 <a href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer" className="hover:text-accent transition-colors">
                   Contact on WhatsApp
