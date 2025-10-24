@@ -13,8 +13,8 @@ import {
   addOffer,
   deleteOffer,
   updateOfferStatus,
+  uploadImage
 } from '../services/firebase';
-import { uploadFile } from '../services/storageService';
 import { Order, PortfolioItem, Offer, OrderStatus } from '../types';
 import DeliveryModal from '../components/DeliveryModal';
 import AdminModal from '../components/AdminModal';
@@ -104,7 +104,7 @@ const AdminView: React.FC = () => {
         setFormLoading(true);
         setFormError('');
         try {
-            const imageURL = await uploadFile(portfolioFile, 'portfolio-images');
+            const imageURL = await uploadImage(portfolioFile, 'portfolio-images');
             await addPortfolioItem({ ...portfolioForm, imageURL });
             setIsPortfolioModalOpen(false);
             resetPortfolioForm();
