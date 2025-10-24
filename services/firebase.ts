@@ -7,20 +7,8 @@ import {
   createUserWithEmailAndPassword,
   User
 } from "firebase/auth";
-// FIX: Replaced namespace import with named imports to match Firebase v9+ modular SDK usage.
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  serverTimestamp,
-  doc,
-  getDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  updateDoc,
-  deleteDoc,
-} from "firebase/firestore";
+// FIX: Replaced named imports with a namespace import for firestore functions to resolve module resolution issues.
+import * as firestore from "firebase/firestore";
 import {
   getStorage,
   ref,
@@ -44,8 +32,8 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-// FIX: Removed `firestore.` prefix
-const db = getFirestore(app);
+// FIX: Added `firestore.` prefix
+const db = firestore.getFirestore(app);
 const storage = getStorage(app);
 
 // Export auth functions and types
@@ -60,12 +48,12 @@ export type { User };
 
 
 // Firestore collections
-// FIX: Removed `firestore.` prefix
-const ordersCollection = collection(db, "orders");
-// FIX: Removed `firestore.` prefix
-const portfolioCollection = collection(db, "portfolio");
-// FIX: Removed `firestore.` prefix
-const offersCollection = collection(db, "offers");
+// FIX: Added `firestore.` prefix
+const ordersCollection = firestore.collection(db, "orders");
+// FIX: Added `firestore.` prefix
+const portfolioCollection = firestore.collection(db, "portfolio");
+// FIX: Added `firestore.` prefix
+const offersCollection = firestore.collection(db, "offers");
 
 // Storage functions
 export const uploadImage = async (file: File, path: string): Promise<string> => {
@@ -77,21 +65,21 @@ export const uploadImage = async (file: File, path: string): Promise<string> => 
 
 // Order functions
 export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'createdAt' | 'price' | 'deliveryFileURL'>): Promise<string> => {
-    // FIX: Removed `firestore.` prefix
-    const docRef = await addDoc(ordersCollection, {
+    // FIX: Added `firestore.` prefix
+    const docRef = await firestore.addDoc(ordersCollection, {
         ...orderData,
         status: 'Pending',
-        // FIX: Removed `firestore.` prefix
-        createdAt: serverTimestamp(),
+        // FIX: Added `firestore.` prefix
+        createdAt: firestore.serverTimestamp(),
     });
     return docRef.id;
 };
 
 export const getOrderStatus = async (orderId: string): Promise<Order | null> => {
-    // FIX: Removed `firestore.` prefix
-    const docRef = doc(db, 'orders', orderId);
-    // FIX: Removed `firestore.` prefix
-    const docSnap = await getDoc(docRef);
+    // FIX: Added `firestore.` prefix
+    const docRef = firestore.doc(db, 'orders', orderId);
+    // FIX: Added `firestore.` prefix
+    const docSnap = await firestore.getDoc(docRef);
     if (docSnap.exists()) {
         const data = docSnap.data();
         return { id: docSnap.id, ...data } as Order;
@@ -100,34 +88,34 @@ export const getOrderStatus = async (orderId: string): Promise<Order | null> => 
 };
 
 export const listenToOrders = (callback: (orders: Order[]) => void) => {
-    // FIX: Removed `firestore.` prefix
-    const q = query(ordersCollection, orderBy('createdAt', 'desc'));
-    // FIX: Removed `firestore.` prefix
-    return onSnapshot(q, (snapshot) => {
+    // FIX: Added `firestore.` prefix
+    const q = firestore.query(ordersCollection, firestore.orderBy('createdAt', 'desc'));
+    // FIX: Added `firestore.` prefix
+    return firestore.onSnapshot(q, (snapshot) => {
         const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
         callback(orders);
     });
 };
 
 export const updateOrderStatus = async (orderId: string, status: OrderStatus): Promise<void> => {
-    // FIX: Removed `firestore.` prefix
-    const docRef = doc(db, 'orders', orderId);
-    // FIX: Removed `firestore.` prefix
-    await updateDoc(docRef, { status });
+    // FIX: Added `firestore.` prefix
+    const docRef = firestore.doc(db, 'orders', orderId);
+    // FIX: Added `firestore.` prefix
+    await firestore.updateDoc(docRef, { status });
 };
 
 export const deleteOrder = async (orderId: string): Promise<void> => {
-    // FIX: Removed `firestore.` prefix
-    const docRef = doc(db, 'orders', orderId);
-    // FIX: Removed `firestore.` prefix
-    await deleteDoc(docRef);
+    // FIX: Added `firestore.` prefix
+    const docRef = firestore.doc(db, 'orders', orderId);
+    // FIX: Added `firestore.` prefix
+    await firestore.deleteDoc(docRef);
 };
 
 export const setOrderAsCompleted = async (orderId: string, deliveryFileURL: string, price: string): Promise<void> => {
-    // FIX: Removed `firestore.` prefix
-    const docRef = doc(db, 'orders', orderId);
-    // FIX: Removed `firestore.` prefix
-    await updateDoc(docRef, {
+    // FIX: Added `firestore.` prefix
+    const docRef = firestore.doc(db, 'orders', orderId);
+    // FIX: Added `firestore.` prefix
+    await firestore.updateDoc(docRef, {
         status: 'Completed',
         deliveryFileURL,
         price,
@@ -137,26 +125,26 @@ export const setOrderAsCompleted = async (orderId: string, deliveryFileURL: stri
 
 // Portfolio functions
 export const listenToPortfolioItems = (callback: (items: PortfolioItem[]) => void) => {
-    // FIX: Removed `firestore.` prefix
-    const q = query(portfolioCollection);
-    // FIX: Removed `firestore.` prefix
-    return onSnapshot(q, (snapshot) => {
+    // FIX: Added `firestore.` prefix
+    const q = firestore.query(portfolioCollection);
+    // FIX: Added `firestore.` prefix
+    return firestore.onSnapshot(q, (snapshot) => {
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PortfolioItem));
         callback(items);
     });
 };
 
 export const addPortfolioItem = async (itemData: Omit<PortfolioItem, 'id'>): Promise<void> => {
-    // FIX: Removed `firestore.` prefix
-    await addDoc(portfolioCollection, itemData);
+    // FIX: Added `firestore.` prefix
+    await firestore.addDoc(portfolioCollection, itemData);
 };
 
 export const deletePortfolioItem = async (item: PortfolioItem): Promise<void> => {
     // Delete the document from Firestore
-    // FIX: Removed `firestore.` prefix
-    const docRef = doc(db, 'portfolio', item.id);
-    // FIX: Removed `firestore.` prefix
-    await deleteDoc(docRef);
+    // FIX: Added `firestore.` prefix
+    const docRef = firestore.doc(db, 'portfolio', item.id);
+    // FIX: Added `firestore.` prefix
+    await firestore.deleteDoc(docRef);
     // Delete the image from Storage
     try {
         const imageRef = ref(storage, item.imageURL);
@@ -167,38 +155,38 @@ export const deletePortfolioItem = async (item: PortfolioItem): Promise<void> =>
 };
 
 export const updatePortfolioItemStatus = async (itemId: string, status: 'Show' | 'Hide'): Promise<void> => {
-    // FIX: Removed `firestore.` prefix
-    const docRef = doc(db, 'portfolio', itemId);
-    // FIX: Removed `firestore.` prefix
-    await updateDoc(docRef, { status });
+    // FIX: Added `firestore.` prefix
+    const docRef = firestore.doc(db, 'portfolio', itemId);
+    // FIX: Added `firestore.` prefix
+    await firestore.updateDoc(docRef, { status });
 };
 
 // Offer functions
 export const listenToOffers = (callback: (offers: Offer[]) => void) => {
-    // FIX: Removed `firestore.` prefix
-    const q = query(offersCollection);
-    // FIX: Removed `firestore.` prefix
-    return onSnapshot(q, (snapshot) => {
+    // FIX: Added `firestore.` prefix
+    const q = firestore.query(offersCollection);
+    // FIX: Added `firestore.` prefix
+    return firestore.onSnapshot(q, (snapshot) => {
         const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
         callback(offers);
     });
 };
 
 export const addOffer = async (offerData: Omit<Offer, 'id'>): Promise<void> => {
-    // FIX: Removed `firestore.` prefix
-    await addDoc(offersCollection, offerData);
+    // FIX: Added `firestore.` prefix
+    await firestore.addDoc(offersCollection, offerData);
 };
 
 export const deleteOffer = async (offerId: string): Promise<void> => {
-    // FIX: Removed `firestore.` prefix
-    const docRef = doc(db, 'offers', offerId);
-    // FIX: Removed `firestore.` prefix
-    await deleteDoc(docRef);
+    // FIX: Added `firestore.` prefix
+    const docRef = firestore.doc(db, 'offers', offerId);
+    // FIX: Added `firestore.` prefix
+    await firestore.deleteDoc(docRef);
 };
 
 export const updateOfferStatus = async (offerId: string, status: 'Active' | 'Inactive'): Promise<void> => {
-    // FIX: Removed `firestore.` prefix
-    const docRef = doc(db, 'offers', offerId);
-    // FIX: Removed `firestore.` prefix
-    await updateDoc(docRef, { status });
+    // FIX: Added `firestore.` prefix
+    const docRef = firestore.doc(db, 'offers', offerId);
+    // FIX: Added `firestore.` prefix
+    await firestore.updateDoc(docRef, { status });
 };

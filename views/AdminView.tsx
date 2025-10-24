@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   auth,
   signOut,
@@ -159,11 +159,11 @@ const AdminView: React.FC = () => {
     };
     
     const inputStyles = "w-full p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
-    const statusStyles: { [key in OrderStatus]: string } = {
-        Pending: 'bg-amber text-amber',
-        'In Progress': 'bg-blue text-blue',
-        Completed: 'bg-accent text-accent',
-        Cancelled: 'bg-error text-error',
+    const statusTextStyles: { [key in OrderStatus]: string } = {
+        Pending: 'text-amber',
+        'In Progress': 'text-blue',
+        Completed: 'text-accent',
+        Cancelled: 'text-error',
     };
     const tabButton = (key: 'orders' | 'portfolio' | 'offers', label: string) => (
         <button
@@ -175,44 +175,69 @@ const AdminView: React.FC = () => {
     );
 
     const renderOrders = () => (
-      <div className="overflow-x-auto glass-card p-4">
-        <table className="w-full text-sm text-left text-text-secondary">
-          <thead className="text-xs text-text-primary uppercase bg-black bg-opacity-20">
-            <tr>
-              <th scope="col" className="px-6 py-3">Customer</th>
-              <th scope="col" className="px-6 py-3">Service</th>
-              <th scope="col" className="px-6 py-3">Status</th>
-              <th scope="col" className="px-6 py-3">Date</th>
-              <th scope="col" className="px-6 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map(order => (
-              <tr key={order.id} className="border-b border-white border-opacity-10 hover:bg-black hover:bg-opacity-10">
-                <td className="px-6 py-4">{order.customerName}<br/><span className="text-xs">{order.contactNumber} | {order.email}</span></td>
-                <td className="px-6 py-4">{order.service}</td>
-                <td className="px-6 py-4">
-                  <select
-                    value={order.status}
-                    onChange={(e) => handleUpdateStatus(order.id, e.target.value as OrderStatus)}
-                    className={`p-1 rounded bg-black bg-opacity-20 text-xs border-none ${statusStyles[order.status]}`}
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
-                </td>
-                <td className="px-6 py-4 text-xs">{order.createdAt?.toDate().toLocaleDateString()}</td>
-                <td className="px-6 py-4 space-x-2 text-xs">
-                  <button onClick={() => handleOpenDeliveryModal(order)} className="font-medium text-accent hover:underline disabled:text-gray-500" disabled={order.status === 'Completed' || order.status === 'Cancelled'}>Deliver</button>
-                  <button onClick={() => handleDeleteOrder(order.id)} className="font-medium text-error hover:underline">Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        <div className="space-y-4">
+            {orders.length > 0 ? (
+                orders.map(order => (
+                    <div key={order.id} className="glass-card p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div className="flex-1">
+                                <h4 className="font-bold text-lg text-text-primary">{order.service}</h4>
+                                <p className="text-sm text-text-secondary">For: {order.customerName} ({order.email})</p>
+                            </div>
+                            <div className="flex items-center gap-4 w-full sm:w-auto">
+                                <select
+                                    value={order.status}
+                                    onChange={(e) => handleUpdateStatus(order.id, e.target.value as OrderStatus)}
+                                    className={`p-2 rounded bg-black bg-opacity-30 text-xs border-none appearance-none ${statusTextStyles[order.status]}`}
+                                >
+                                    <option value="Pending">Pending</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                                <div className="flex gap-2 text-xs">
+                                    <button
+                                        onClick={() => handleOpenDeliveryModal(order)}
+                                        className="font-medium text-accent hover:underline disabled:text-gray-500 disabled:cursor-not-allowed disabled:no-underline"
+                                        disabled={order.status === 'Completed' || order.status === 'Cancelled'}
+                                    >
+                                        Deliver
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteOrder(order.id)}
+                                        className="font-medium text-error hover:underline"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-white border-opacity-10 text-sm text-text-secondary space-y-2">
+                            <p><strong className="text-text-primary">Date:</strong> {order.createdAt?.toDate().toLocaleDateString()}</p>
+                            <p><strong className="text-text-primary">Description:</strong> {order.details}</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
+                                {order.fileURL && (
+                                    <a href={order.fileURL} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline text-xs flex items-center gap-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                                        View Attached File
+                                    </a>
+                                )}
+                                {order.deliveryFileURL && (
+                                    <a href={order.deliveryFileURL} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline text-xs flex items-center gap-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                        View Delivered File
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                ))
+            ) : (
+                <div className="glass-card p-8 text-center text-text-secondary">
+                    <p>No orders found.</p>
+                </div>
+            )}
+        </div>
     );
     
     const renderPortfolio = () => (
