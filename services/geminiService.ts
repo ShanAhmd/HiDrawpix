@@ -6,7 +6,7 @@ import { GEMINI_SYSTEM_INSTRUCTION } from '../constants';
 // The API key is assumed to be available and valid.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const model = 'gemini-2.5-flash';
+const model = 'gemini-flash-latest';
 
 export const getChatbotResponse = async (history: ChatMessage[], newMessage: string): Promise<string> => {
   try {
