@@ -1,30 +1,36 @@
-
-import { initializeApp } from 'firebase/app';
+// Firebase imports
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAnalytics } from "firebase/analytics";
 import { 
     getAuth, 
+    onAuthStateChanged, 
     signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
     signOut, 
-    onAuthStateChanged,
-    User,
-    createUserWithEmailAndPassword
+    User 
 } from 'firebase/auth';
-// FIX: Changed import path from 'firebase/firestore' to '@firebase/firestore' to resolve module export errors.
-import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    Timestamp, 
-    doc, 
-    getDoc, 
-    query, 
-    orderBy, 
-    onSnapshot,
-    updateDoc,
-    deleteDoc,
-    serverTimestamp
+// FIX: Reverted to @firebase/firestore as the project's dependency setup seems to require it.
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDoc,
+  doc,
+  onSnapshot,
+  query,
+  orderBy,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
 } from '@firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Order, OrderStatus, PortfolioItem, Offer } from '../types';
+import { 
+    getStorage, 
+    ref, 
+    uploadBytes, 
+    getDownloadURL, 
+    deleteObject 
+} from 'firebase/storage';
+import { Order, PortfolioItem, Offer, OrderStatus } from '../types';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -37,85 +43,95 @@ const firebaseConfig = {
   measurementId: "G-8K4BREDZJ1"
 };
 
-
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app: FirebaseApp = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 const auth = getAuth(app);
-// FIX: Called getFirestore directly as required by Firebase v9.
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// Re-export auth functions and types for convenience
+export { auth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut };
+export type { User };
+
+
+// Firestore collection references
 const ordersCollection = collection(db, 'orders');
 const portfolioCollection = collection(db, 'portfolio');
-const offersCollection = collection(db, 'specialOffers');
+const offersCollection = collection(db, 'offers');
 
-
-// --- File Upload Function ---
-export const uploadImage = async (file: File, path: string): Promise<string> => {
-  try {
-      const storageRef = ref(storage, `${path}/${Date.now()}-${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      return downloadURL;
-  } catch (error) {
-      console.error("Error uploading image:", error);
-      throw new Error("Could not upload image.");
-  }
-};
 
 // --- Order Functions ---
 
-export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'createdAt'>) => {
-  try {
+export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'createdAt'>): Promise<string> => {
     const docRef = await addDoc(ordersCollection, {
-      ...orderData,
-      status: 'Pending',
-      createdAt: Timestamp.now(),
+        ...orderData,
+        status: 'Pending',
+        createdAt: serverTimestamp(),
     });
     return docRef.id;
-  } catch (error) {
-    console.error("Error adding order: ", error);
-    throw new Error("Could not place order.");
-  }
 };
 
 export const getOrderStatus = async (orderId: string): Promise<Order | null> => {
-    try {
-        const orderDocRef = doc(db, 'orders', orderId);
-        const docSnapshot = await getDoc(orderDocRef);
-        if (!docSnapshot.exists()) {
-            return null;
-        }
-        return { id: docSnapshot.id, ...docSnapshot.data() } as Order;
-    } catch (error) {
-        console.error("Error getting order status:", error);
-        throw new Error("Could not fetch order status.");
+    const docRef = doc(db, 'orders', orderId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Order;
     }
-}
+    return null;
+};
 
-export const listenToOrders = (callback: (orders: Order[]) => void) => {
+export const setOrderAsCompleted = async (orderId: string, deliveryFileURL: string, price: string): Promise<void> => {
+    const docRef = doc(db, 'orders', orderId);
+    await updateDoc(docRef, {
+        status: 'Completed',
+        deliveryFileURL: deliveryFileURL,
+        completedAt: serverTimestamp(),
+        price: price,
+    });
+};
+
+export const updateOrderStatus = async (orderId: string, status: OrderStatus): Promise<void> => {
+    const docRef = doc(db, 'orders', orderId);
+    await updateDoc(docRef, { status });
+};
+
+export const deleteOrder = async (orderId: string): Promise<void> => {
+    const docRef = doc(db, 'orders', orderId);
+    await deleteDoc(docRef);
+};
+
+export const listenToOrders = (callback: (orders: Order[]) => void): (() => void) => {
     const q = query(ordersCollection, orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (querySnapshot) => {
-        const orders = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Order));
+    return onSnapshot(q, (snapshot) => {
+        const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
         callback(orders);
     });
 };
 
-export const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
-  try {
-    const orderDocRef = doc(db, 'orders', orderId);
-    await updateDoc(orderDocRef, { status });
-  } catch (error) {
-    console.error("Error updating order status: ", error);
-    throw new Error("Could not update order status.");
-  }
+// --- Storage Functions ---
+
+export const uploadImage = async (file: File, path: string): Promise<string> => {
+    const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
+    await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+};
+
+const deleteFileByUrl = async (url: string) => {
+    try {
+        const storageRef = ref(storage, url);
+        await deleteObject(storageRef);
+    } catch (error) {
+        if ((error as any).code !== 'storage/object-not-found') {
+             console.error("Error deleting file from storage:", error);
+        }
+    }
 };
 
 // --- Portfolio Functions ---
-export const listenToPortfolioItems = (callback: (items: PortfolioItem[]) => void) => {
+
+export const listenToPortfolioItems = (callback: (items: PortfolioItem[]) => void): (() => void) => {
     const q = query(portfolioCollection, orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snapshot) => {
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PortfolioItem));
@@ -123,42 +139,43 @@ export const listenToPortfolioItems = (callback: (items: PortfolioItem[]) => voi
     });
 };
 
-export const addPortfolioItem = (item: Omit<PortfolioItem, 'id' | 'createdAt'>) => {
-    return addDoc(portfolioCollection, { ...item, createdAt: serverTimestamp() });
+export const addPortfolioItem = async (item: Omit<PortfolioItem, 'id' | 'createdAt'>): Promise<void> => {
+    await addDoc(portfolioCollection, { ...item, createdAt: serverTimestamp() });
 };
 
-export const updatePortfolioItem = (id: string, item: Partial<PortfolioItem>) => {
-    return updateDoc(doc(db, 'portfolio', id), item);
+export const updatePortfolioItemStatus = async (itemId: string, status: 'Show' | 'Hide'): Promise<void> => {
+    const docRef = doc(db, 'portfolio', itemId);
+    await updateDoc(docRef, { status });
 };
 
-export const deletePortfolioItem = (id: string) => {
-    return deleteDoc(doc(db, 'portfolio', id));
+export const deletePortfolioItem = async (item: PortfolioItem): Promise<void> => {
+    // Delete Firestore document
+    const docRef = doc(db, 'portfolio', item.id);
+    await deleteDoc(docRef);
+    // Delete image from Storage
+    await deleteFileByUrl(item.imageURL);
 };
-
 
 // --- Offer Functions ---
-export const listenToOffers = (callback: (items: Offer[]) => void) => {
+
+export const listenToOffers = (callback: (offers: Offer[]) => void): (() => void) => {
     const q = query(offersCollection, orderBy('createdAt', 'desc'));
     return onSnapshot(q, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
-        callback(items);
+        const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
+        callback(offers);
     });
 };
 
-export const addOffer = (offer: Omit<Offer, 'id' | 'createdAt'>) => {
-    return addDoc(offersCollection, { ...offer, createdAt: serverTimestamp() });
+export const addOffer = async (offer: Omit<Offer, 'id' | 'createdAt'>): Promise<void> => {
+    await addDoc(offersCollection, { ...offer, createdAt: serverTimestamp() });
 };
 
-export const updateOffer = (id: string, offer: Partial<Offer>) => {
-    return updateDoc(doc(db, 'specialOffers', id), offer);
+export const updateOfferStatus = async (offerId: string, status: 'Active' | 'Inactive'): Promise<void> => {
+    const docRef = doc(db, 'offers', offerId);
+    await updateDoc(docRef, { status });
 };
 
-export const deleteOffer = (id: string) => {
-    return deleteDoc(doc(db, 'specialOffers', id));
+export const deleteOffer = async (offerId: string): Promise<void> => {
+    const docRef = doc(db, 'offers', offerId);
+    await deleteDoc(docRef);
 };
-
-
-// --- Auth Functions ---
-
-export { auth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword };
-export type { User };

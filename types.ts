@@ -1,5 +1,5 @@
 import React from 'react';
-// FIX: Changed import path from 'firebase/firestore' to '@firebase/firestore' to resolve module export errors.
+// FIX: Reverted change. The project's dependency setup appears to require the scoped package import.
 import { Timestamp } from '@firebase/firestore';
 
 export interface Service {
@@ -21,6 +21,9 @@ export interface Order {
   status: OrderStatus;
   createdAt: Timestamp;
   fileURL?: string;
+  deliveryFileURL?: string;
+  completedAt?: Timestamp;
+  price?: string;
 }
 
 export interface ChatMessage {

@@ -1,5 +1,5 @@
 {
-  "name": "hi-drawpix-online-order-sys",
+  "name": "hi-drawpix-online-order-system",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,10 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.26.0",
-    "firebase": "^12.4.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "firebase": "^12.4.0",
+    "@google/genai": "^1.26.0",
+    "@firebase/firestore": "^4.9.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

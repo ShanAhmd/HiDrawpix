@@ -227,6 +227,11 @@ const OrderStatusChecker: React.FC = () => {
                     <p><strong>Customer:</strong> {order.customerName}</p>
                     <p><strong>Service:</strong> {order.service}</p>
                     <p><strong>Status:</strong> <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusStyles[order.status]}`}>{order.status}</span></p>
+                    {order.status === 'Completed' && order.deliveryFileURL && (
+                      <a href={order.deliveryFileURL} target="_blank" rel="noopener noreferrer" className="mt-4 block w-full text-center bg-accent text-primary-bg py-3 px-6 rounded-xl font-semibold hover:bg-opacity-90 transition-all glowing-btn">
+                          Download Your Files
+                      </a>
+                    )}
                 </div>
             )}
         </div>
