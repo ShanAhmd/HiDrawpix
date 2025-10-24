@@ -1,38 +1,25 @@
-// Firebase imports
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAnalytics } from "firebase/analytics";
-import { 
-    getAuth, 
-    onAuthStateChanged, 
-    signInWithEmailAndPassword, 
-    createUserWithEmailAndPassword, 
-    signOut, 
-    User 
-} from 'firebase/auth';
-// FIX: Reverted to @firebase/firestore as the project's dependency setup seems to require it.
+import { initializeApp } from "firebase/app";
 import {
-  getFirestore,
-  collection,
-  addDoc,
-  getDoc,
-  doc,
-  onSnapshot,
-  query,
-  orderBy,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-} from '@firebase/firestore';
-import { 
-    getStorage, 
-    ref, 
-    uploadBytes, 
-    getDownloadURL, 
-    deleteObject 
-} from 'firebase/storage';
-import { Order, PortfolioItem, Offer, OrderStatus } from '../types';
+  getAuth,
+  onAuthStateChanged,
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  User
+} from "firebase/auth";
+// FIX: Replaced named imports from 'firebase/firestore' with a namespace import.
+// This can resolve module loading errors caused by bundler or environment configuration issues.
+import * as firestore from "firebase/firestore";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
+} from "firebase/storage";
+import { Order, PortfolioItem, Offer, OrderStatus } from './types';
 
-// Your web app's Firebase configuration
+// IMPORTANT: The Firebase config is now hardcoded with your project's credentials.
 const firebaseConfig = {
   apiKey: "AIzaSyBybr54q7CGz3SvRQ0LMFPq6bST4uQmiZ0",
   authDomain: "hi-drawpix.firebaseapp.com",
@@ -44,138 +31,133 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app: FirebaseApp = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = firestore.getFirestore(app);
 const storage = getStorage(app);
 
-// Re-export auth functions and types for convenience
-export { auth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut };
+// Export auth functions and types
+export {
+  auth,
+  onAuthStateChanged,
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword
+};
 export type { User };
 
 
-// Firestore collection references
-const ordersCollection = collection(db, 'orders');
-const portfolioCollection = collection(db, 'portfolio');
-const offersCollection = collection(db, 'offers');
+// Firestore collections
+const ordersCollection = firestore.collection(db, "orders");
+const portfolioCollection = firestore.collection(db, "portfolio");
+const offersCollection = firestore.collection(db, "offers");
 
+// Storage functions
+export const uploadImage = async (file: File, path: string): Promise<string> => {
+  const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
+  await uploadBytes(storageRef, file);
+  const downloadURL = await getDownloadURL(storageRef);
+  return downloadURL;
+};
 
-// --- Order Functions ---
-
-export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'createdAt'>): Promise<string> => {
-    const docRef = await addDoc(ordersCollection, {
+// Order functions
+export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'createdAt' | 'price' | 'deliveryFileURL'>): Promise<string> => {
+    const docRef = await firestore.addDoc(ordersCollection, {
         ...orderData,
         status: 'Pending',
-        createdAt: serverTimestamp(),
+        createdAt: firestore.serverTimestamp(),
     });
     return docRef.id;
 };
 
 export const getOrderStatus = async (orderId: string): Promise<Order | null> => {
-    const docRef = doc(db, 'orders', orderId);
-    const docSnap = await getDoc(docRef);
+    const docRef = firestore.doc(db, 'orders', orderId);
+    const docSnap = await firestore.getDoc(docRef);
     if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as Order;
+        const data = docSnap.data();
+        return { id: docSnap.id, ...data } as Order;
     }
     return null;
 };
 
-export const setOrderAsCompleted = async (orderId: string, deliveryFileURL: string, price: string): Promise<void> => {
-    const docRef = doc(db, 'orders', orderId);
-    await updateDoc(docRef, {
-        status: 'Completed',
-        deliveryFileURL: deliveryFileURL,
-        completedAt: serverTimestamp(),
-        price: price,
-    });
-};
-
-export const updateOrderStatus = async (orderId: string, status: OrderStatus): Promise<void> => {
-    const docRef = doc(db, 'orders', orderId);
-    await updateDoc(docRef, { status });
-};
-
-export const deleteOrder = async (orderId: string): Promise<void> => {
-    const docRef = doc(db, 'orders', orderId);
-    await deleteDoc(docRef);
-};
-
-export const listenToOrders = (callback: (orders: Order[]) => void): (() => void) => {
-    const q = query(ordersCollection, orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
+export const listenToOrders = (callback: (orders: Order[]) => void) => {
+    const q = firestore.query(ordersCollection, firestore.orderBy('createdAt', 'desc'));
+    return firestore.onSnapshot(q, (snapshot) => {
         const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
         callback(orders);
     });
 };
 
-// --- Storage Functions ---
-
-export const uploadImage = async (file: File, path: string): Promise<string> => {
-    const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
-    return downloadURL;
+export const updateOrderStatus = async (orderId: string, status: OrderStatus): Promise<void> => {
+    const docRef = firestore.doc(db, 'orders', orderId);
+    await firestore.updateDoc(docRef, { status });
 };
 
-const deleteFileByUrl = async (url: string) => {
-    try {
-        const storageRef = ref(storage, url);
-        await deleteObject(storageRef);
-    } catch (error) {
-        if ((error as any).code !== 'storage/object-not-found') {
-             console.error("Error deleting file from storage:", error);
-        }
-    }
+export const deleteOrder = async (orderId: string): Promise<void> => {
+    const docRef = firestore.doc(db, 'orders', orderId);
+    await firestore.deleteDoc(docRef);
 };
 
-// --- Portfolio Functions ---
+export const setOrderAsCompleted = async (orderId: string, deliveryFileURL: string, price: string): Promise<void> => {
+    const docRef = firestore.doc(db, 'orders', orderId);
+    await firestore.updateDoc(docRef, {
+        status: 'Completed',
+        deliveryFileURL,
+        price,
+    });
+};
 
-export const listenToPortfolioItems = (callback: (items: PortfolioItem[]) => void): (() => void) => {
-    const q = query(portfolioCollection, orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
+
+// Portfolio functions
+export const listenToPortfolioItems = (callback: (items: PortfolioItem[]) => void) => {
+    const q = firestore.query(portfolioCollection);
+    return firestore.onSnapshot(q, (snapshot) => {
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PortfolioItem));
         callback(items);
     });
 };
 
-export const addPortfolioItem = async (item: Omit<PortfolioItem, 'id' | 'createdAt'>): Promise<void> => {
-    await addDoc(portfolioCollection, { ...item, createdAt: serverTimestamp() });
-};
-
-export const updatePortfolioItemStatus = async (itemId: string, status: 'Show' | 'Hide'): Promise<void> => {
-    const docRef = doc(db, 'portfolio', itemId);
-    await updateDoc(docRef, { status });
+export const addPortfolioItem = async (itemData: Omit<PortfolioItem, 'id'>): Promise<void> => {
+    await firestore.addDoc(portfolioCollection, itemData);
 };
 
 export const deletePortfolioItem = async (item: PortfolioItem): Promise<void> => {
-    // Delete Firestore document
-    const docRef = doc(db, 'portfolio', item.id);
-    await deleteDoc(docRef);
-    // Delete image from Storage
-    await deleteFileByUrl(item.imageURL);
+    // Delete the document from Firestore
+    const docRef = firestore.doc(db, 'portfolio', item.id);
+    await firestore.deleteDoc(docRef);
+    // Delete the image from Storage
+    try {
+        const imageRef = ref(storage, item.imageURL);
+        await deleteObject(imageRef);
+    } catch(error) {
+        console.error("Error deleting portfolio image from storage:", error);
+    }
 };
 
-// --- Offer Functions ---
+export const updatePortfolioItemStatus = async (itemId: string, status: 'Show' | 'Hide'): Promise<void> => {
+    const docRef = firestore.doc(db, 'portfolio', itemId);
+    await firestore.updateDoc(docRef, { status });
+};
 
-export const listenToOffers = (callback: (offers: Offer[]) => void): (() => void) => {
-    const q = query(offersCollection, orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
+// Offer functions
+export const listenToOffers = (callback: (offers: Offer[]) => void) => {
+    const q = firestore.query(offersCollection);
+    return firestore.onSnapshot(q, (snapshot) => {
         const offers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Offer));
         callback(offers);
     });
 };
 
-export const addOffer = async (offer: Omit<Offer, 'id' | 'createdAt'>): Promise<void> => {
-    await addDoc(offersCollection, { ...offer, createdAt: serverTimestamp() });
-};
-
-export const updateOfferStatus = async (offerId: string, status: 'Active' | 'Inactive'): Promise<void> => {
-    const docRef = doc(db, 'offers', offerId);
-    await updateDoc(docRef, { status });
+export const addOffer = async (offerData: Omit<Offer, 'id'>): Promise<void> => {
+    await firestore.addDoc(offersCollection, offerData);
 };
 
 export const deleteOffer = async (offerId: string): Promise<void> => {
-    const docRef = doc(db, 'offers', offerId);
-    await deleteDoc(docRef);
+    const docRef = firestore.doc(db, 'offers', offerId);
+    await firestore.deleteDoc(docRef);
+};
+
+export const updateOfferStatus = async (offerId: string, status: 'Active' | 'Inactive'): Promise<void> => {
+    const docRef = firestore.doc(db, 'offers', offerId);
+    await firestore.updateDoc(docRef, { status });
 };

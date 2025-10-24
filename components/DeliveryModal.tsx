@@ -41,6 +41,14 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order })
     }
     setLoading(true);
     setFeedback(null);
+
+    if (typeof emailjs === 'undefined') {
+        setFeedback({ type: 'error', message: 'Email service is not available. Please try again later.' });
+        console.error("EmailJS SDK is not loaded.");
+        setLoading(false);
+        return;
+    }
+
     try {
       // 1. Upload file to Firebase Storage
       const downloadURL = await uploadImage(file, 'delivery-files');
@@ -49,13 +57,9 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order })
       await setOrderAsCompleted(order.id, downloadURL, price);
       
       // 3. Send email using EmailJS
-      // =================================================================================
-      // EmailJS credentials are now configured.
-      // =================================================================================
       const EMAILJS_SERVICE_ID = 'service_2vvnvqa';
       const EMAILJS_TEMPLATE_ID = 'template_tzt3kjx';
-      const EMAILJS_PUBLIC_KEY = 'R5xvS0Q7ecbwMgjZB';
-
+      
       const templateParams = {
         to_name: order.customerName,
         to_email: order.email,
@@ -67,7 +71,9 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order })
         completion_date: new Date().toLocaleDateString(),
       };
       
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
+      // FIX: The public key is now set during initialization in App.tsx.
+      // The send function for the modern SDK does not take the public key as an argument.
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
       
       setFeedback({ type: 'success', message: 'Email sent successfully! Closing...' });
 

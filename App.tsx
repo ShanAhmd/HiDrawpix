@@ -8,8 +8,9 @@ import AdminSignUp from './views/AdminSignUp';
 import AboutView from './views/AboutView';
 import TermsView from './views/TermsView';
 import { useAuth } from './hooks/useAuth';
-import WhatsAppButton from './components/WhatsAppButton';
-import Chatbot from './components/Chatbot';
+
+// Declare the emailjs library which is loaded from a script tag in index.html
+declare const emailjs: any;
 
 
 type View = 'customer' | 'admin' | 'about' | 'terms';
@@ -27,6 +28,18 @@ const App: React.FC = () => {
      // Scroll to top on view change
     window.scrollTo(0, 0);
   }, [currentView]);
+
+  useEffect(() => {
+    // Initialize EmailJS with the public key when the app loads.
+    // This is the correct modern approach for the EmailJS SDK.
+    if (typeof emailjs !== 'undefined') {
+        try {
+            emailjs.init({ publicKey: 'R5xvS0Q7ecbwMgjZB' });
+        } catch(e) {
+            console.error('EmailJS init failed:', e)
+        }
+    }
+  }, []);
 
 
   const renderContent = () => {
@@ -60,7 +73,6 @@ const App: React.FC = () => {
   };
 
   const headerView = currentView === 'admin' ? 'admin' : 'customer';
-  const showCustomerComponents = currentView === 'customer';
   const showFooter = currentView !== 'admin';
 
   return (

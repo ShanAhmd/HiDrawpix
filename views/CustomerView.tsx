@@ -16,7 +16,10 @@ type FormData = {
 const ServiceCard: React.FC<{ service: Service }> = ({ service }) => (
   <div className="glass-card p-6 text-center flex flex-col items-center hover:-translate-y-2 transition-transform duration-300 h-full">
     <div className="flex items-center justify-center h-16 w-16 rounded-full bg-accent bg-opacity-20 mb-4">
-      {React.cloneElement(service.icon, { className: "h-8 w-8 text-accent" })}
+      {/* FIX: Cast service.icon to any to resolve TypeScript error with React.cloneElement.
+          This is necessary because the specific props type of the ReactElement is not preserved in the Service type definition,
+          causing TypeScript to fail to validate the 'className' prop. */}
+      {React.cloneElement(service.icon as any, { className: "h-8 w-8 text-accent" })}
     </div>
     <h3 className="text-xl font-bold text-text-primary mb-2">{service.title}</h3>
     <p className="text-text-secondary flex-grow">{service.description}</p>

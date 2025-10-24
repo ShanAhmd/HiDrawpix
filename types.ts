@@ -1,12 +1,15 @@
 import React from 'react';
-// FIX: Reverted change. The project's dependency setup appears to require the scoped package import.
-import { Timestamp } from '@firebase/firestore';
 
 export interface Service {
   title: string;
   description: string;
-  icon: React.ReactElement<React.SVGProps<SVGSVGElement>>;
-  minPrice?: number;
+  icon: React.ReactElement;
+  minPrice: number;
+}
+
+export interface ChatMessage {
+  sender: 'user' | 'bot';
+  text: string;
 }
 
 export type OrderStatus = 'Pending' | 'In Progress' | 'Completed' | 'Cancelled';
@@ -16,19 +19,13 @@ export interface Order {
   customerName: string;
   contactNumber: string;
   email: string;
-  details: string;
   service: string;
-  status: OrderStatus;
-  createdAt: Timestamp;
+  details: string;
   fileURL?: string;
+  status: OrderStatus;
+  createdAt: any; // Firestore Timestamp
   deliveryFileURL?: string;
-  completedAt?: Timestamp;
   price?: string;
-}
-
-export interface ChatMessage {
-  sender: 'user' | 'bot';
-  text: string;
 }
 
 export interface PortfolioItem {
@@ -37,14 +34,12 @@ export interface PortfolioItem {
   description: string;
   imageURL: string;
   status: 'Show' | 'Hide';
-  createdAt: Timestamp;
 }
 
 export interface Offer {
-  id: string;
+  id:string;
   title: string;
   description: string;
   price: string;
   status: 'Active' | 'Inactive';
-  createdAt: Timestamp;
 }
