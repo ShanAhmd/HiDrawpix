@@ -4,7 +4,6 @@ import Footer from './components/Footer';
 import CustomerView from './views/CustomerView';
 import AdminView from './views/AdminView';
 import AdminSignIn from './views/AdminSignIn';
-import AdminSignUp from './views/AdminSignUp';
 import AboutView from './views/AboutView';
 import TermsView from './views/TermsView';
 import { useAuth } from './hooks/useAuth';
@@ -17,14 +16,9 @@ type View = 'customer' | 'admin' | 'about' | 'terms';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('customer');
-  const [adminPage, setAdminPage] = useState<'signin' | 'signup'>('signin');
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    // When switching away from admin view, reset to the sign-in page
-    if (currentView !== 'admin') {
-      setAdminPage('signin');
-    }
      // Scroll to top on view change
     window.scrollTo(0, 0);
   }, [currentView]);
@@ -63,10 +57,7 @@ const App: React.FC = () => {
         if (user) {
             return <AdminView />;
         }
-        if (adminPage === 'signin') {
-            return <AdminSignIn onSwitchToSignUp={() => setAdminPage('signup')} />;
-        }
-        return <AdminSignUp onSwitchToSignIn={() => setAdminPage('signin')} />;
+        return <AdminSignIn />;
       default:
         return <CustomerView />;
     }

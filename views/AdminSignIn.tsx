@@ -1,12 +1,7 @@
-
 import React, { useState } from 'react';
 import { auth, signInWithEmailAndPassword } from '../services/firebase';
 
-interface AdminSignInProps {
-  onSwitchToSignUp: () => void;
-}
-
-const AdminSignIn: React.FC<AdminSignInProps> = ({ onSwitchToSignUp }) => {
+const AdminSignIn: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -60,18 +55,6 @@ const AdminSignIn: React.FC<AdminSignInProps> = ({ onSwitchToSignUp }) => {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <div className="text-center mt-4">
-            <p className="text-sm text-text-secondary">
-                Don't have an account?{' '}
-                <button
-                    type="button"
-                    onClick={onSwitchToSignUp}
-                    className="font-semibold text-accent hover:underline focus:outline-none bg-transparent border-none"
-                >
-                    Sign Up
-                </button>
-            </p>
-        </div>
       </div>
     </div>
   );
