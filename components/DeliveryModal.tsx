@@ -49,10 +49,12 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order })
       await setOrderAsCompleted(order.id, downloadURL, price);
       
       // 3. Send email using EmailJS
-      // IMPORTANT: Replace these placeholders with your actual EmailJS credentials
-      const EMAILJS_SERVICE_ID = 'YOUR_SERVICE_ID';
-      const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
-      const EMAILJS_PUBLIC_KEY = 'YOUR_PUBLIC_KEY';
+      // =================================================================================
+      // EmailJS credentials are now configured.
+      // =================================================================================
+      const EMAILJS_SERVICE_ID = 'service_2vvnvqa';
+      const EMAILJS_TEMPLATE_ID = 'template_tzt3kjx';
+      const EMAILJS_PUBLIC_KEY = 'R5xvS0Q7ecbwMgjZB';
 
       const templateParams = {
         to_name: order.customerName,
