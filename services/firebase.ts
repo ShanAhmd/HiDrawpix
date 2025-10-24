@@ -12,8 +12,6 @@ import * as firestore from "firebase/firestore";
 import {
   getStorage,
   ref,
-  uploadBytes,
-  getDownloadURL,
   deleteObject
 } from "firebase/storage";
 import { Order, PortfolioItem, Offer, OrderStatus } from '../types';
@@ -42,7 +40,8 @@ export {
   onAuthStateChanged,
   signOut,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword
+  createUserWithEmailAndPassword,
+  storage,
 };
 export type { User };
 
@@ -54,14 +53,6 @@ const ordersCollection = firestore.collection(db, "orders");
 const portfolioCollection = firestore.collection(db, "portfolio");
 // FIX: Added `firestore.` prefix
 const offersCollection = firestore.collection(db, "offers");
-
-// Storage functions
-export const uploadImage = async (file: File, path: string): Promise<string> => {
-  const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-  await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(storageRef);
-  return downloadURL;
-};
 
 // Order functions
 export const addOrder = async (orderData: Omit<Order, 'id' | 'status' | 'createdAt' | 'price' | 'deliveryFileURL'>): Promise<string> => {

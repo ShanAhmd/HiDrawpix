@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { SERVICES } from '../constants';
-import { addOrder, getOrderStatus, uploadImage, listenToPortfolioItems, listenToOffers } from '../services/firebase';
+import { addOrder, getOrderStatus, listenToPortfolioItems, listenToOffers } from '../services/firebase';
+import { uploadFile } from '../services/storageService';
 import { Service, Order, PortfolioItem, Offer } from '../types';
 import Chatbot from '../components/Chatbot';
 import WhatsAppButton from '../components/WhatsAppButton';
@@ -93,7 +94,7 @@ const OrderForm: React.FC<{
       };
 
       if (selectedFile) {
-        const fileURL = await uploadImage(selectedFile, 'order-attachments');
+        const fileURL = await uploadFile(selectedFile, 'order-attachments');
         orderPayload.fileURL = fileURL;
       }
       

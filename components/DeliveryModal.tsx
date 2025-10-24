@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Order } from '../types';
 import AdminModal from './AdminModal';
-import { uploadImage, setOrderAsCompleted } from '../services/firebase';
+import { setOrderAsCompleted } from '../services/firebase';
+import { uploadFile } from '../services/storageService';
 
 // Declare the emailjs library which is loaded from a script tag in index.html
 declare const emailjs: any;
@@ -50,8 +51,8 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order })
     }
 
     try {
-      // 1. Upload file to Firebase Storage
-      const downloadURL = await uploadImage(file, 'delivery-files');
+      // 1. Upload file to the storage service
+      const downloadURL = await uploadFile(file, 'delivery-files');
       
       // 2. Update order status in Firestore
       await setOrderAsCompleted(order.id, downloadURL, price);

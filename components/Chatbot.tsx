@@ -61,7 +61,14 @@ const Chatbot: React.FC<ChatbotProps> = ({ onOrderInfoExtracted }) => {
         className="fixed bottom-24 right-6 bg-accent text-primary-bg rounded-full p-4 shadow-lg hover:bg-opacity-90 transition-transform transform hover:scale-110 z-50 flex items-center justify-center glowing-btn"
         aria-label="Open AI Assistant"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8"><path d="m12 14 4-4"/><path d="m16 14-4-4"/><path d="M18 10V8a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2"/><path d="M20 14v3a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-3"/><path d="M4 14a2 2 0 0 0-2 2v3c0 1.1.9 2 2 2h3"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+            <path d="M12 8V4H8"/>
+            <rect width="16" height="12" x="4" y="8" rx="2"/>
+            <path d="M2 14h2"/>
+            <path d="M20 14h2"/>
+            <path d="M15 13v2"/>
+            <path d="M9 13v2"/>
+        </svg>
       </button>
 
       {isOpen && (
