@@ -1,19 +1,18 @@
-// FIX: Corrected import statement for React hooks.
 import React, { useState, useEffect } from 'react';
 import { Order } from '../types';
 import AdminModal from './AdminModal';
-import { uploadImage, setOrderAsCompleted } from '../services/firebase';
+import { uploadFile, updateData } from '../lib/api';
 
-// Declare the emailjs library which is loaded from a script tag in index.html
 declare const emailjs: any;
 
 interface DeliveryModalProps {
   isOpen: boolean;
   onClose: () => void;
   order: Order;
+  onOrderDelivered: () => void; // Callback to refresh data in parent
 }
 
-const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order }) => {
+const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order, onOrderDelivered }) => {
   const [file, setFile] = useState<File | null>(null);
   const [price, setPrice] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,13 +49,10 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order })
     }
 
     try {
-      // 1. Upload file to Firebase Storage
-      const downloadURL = await uploadImage(file, 'delivery-files');
+      const { url: downloadURL } = await uploadFile(file, 'delivery-files');
       
-      // 2. Update order status in Firestore
-      await setOrderAsCompleted(order.id, downloadURL, price);
+      await updateData({ ...order, deliveryFileURL: downloadURL, price, status: 'Completed' });
       
-      // 3. Send email using EmailJS
       const EMAILJS_SERVICE_ID = 'service_2vvnvqa';
       const EMAILJS_TEMPLATE_ID = 'template_tzt3kjx';
       
@@ -71,18 +67,18 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order })
         completion_date: new Date().toLocaleDateString(),
       };
       
-      // FIX: The public key is now set during initialization in App.tsx.
-      // The send function for the modern SDK does not take the public key as an argument.
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams);
       
       setFeedback({ type: 'success', message: 'Email sent successfully! Closing...' });
 
+      onOrderDelivered(); // Refresh data on the admin dashboard
       setTimeout(() => {
           onClose();
       }, 2000);
 
     } catch (err) {
-      setFeedback({ type: 'error', message: 'Failed to complete delivery. Check console for details.' });
+      const message = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setFeedback({ type: 'error', message: `Failed to complete delivery: ${message}` });
       console.error(err);
     } finally {
       setLoading(false);
@@ -119,7 +115,6 @@ const DeliveryModal: React.FC<DeliveryModalProps> = ({ isOpen, onClose, order })
             <label className="block text-sm font-medium text-text-secondary mb-2">Attach Final File</label>
             <input 
                 type="file" 
-// FIX: Corrected typo from `e.g.files` to `e.target.files`.
                 onChange={e => setFile(e.target.files ? e.target.files[0] : null)} 
                 className={`${inputStyles} p-2 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-primary-bg hover:file:bg-opacity-90`} 
                 required 

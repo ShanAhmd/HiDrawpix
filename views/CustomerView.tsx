@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { SERVICES } from '../constants';
-import { addOrder, getOrderStatus, uploadImage, listenToPortfolioItems, listenToOffers } from '../services/firebase';
+import { addOrder, getPortfolioItems, getOffers, listData, uploadFile } from '../lib/api';
 import { Service, Order, PortfolioItem, Offer } from '../types';
 import Chatbot from '../components/Chatbot';
 import WhatsAppButton from '../components/WhatsAppButton';
@@ -13,18 +13,17 @@ type FormData = {
   service: string;
 };
 
+// ... (ServiceCard component remains the same)
 const ServiceCard: React.FC<{ service: Service }> = ({ service }) => (
   <div className="glass-card p-6 text-center flex flex-col items-center hover:-translate-y-2 transition-transform duration-300 h-full">
     <div className="flex items-center justify-center h-16 w-16 rounded-full bg-accent bg-opacity-20 mb-4">
-      {/* FIX: Cast service.icon to any to resolve TypeScript error with React.cloneElement.
-          This is necessary because the specific props type of the ReactElement is not preserved in the Service type definition,
-          causing TypeScript to fail to validate the 'className' prop. */}
       {React.cloneElement(service.icon as any, { className: "h-8 w-8 text-accent" })}
     </div>
     <h3 className="text-xl font-bold text-text-primary mb-2">{service.title}</h3>
     <p className="text-text-secondary flex-grow">{service.description}</p>
   </div>
 );
+
 
 const OrderForm: React.FC<{
   formData: FormData;
@@ -48,7 +47,6 @@ const OrderForm: React.FC<{
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear messages when user starts editing
     setMessage('');
     setError('');
     setOrderId(null);
@@ -88,19 +86,16 @@ const OrderForm: React.FC<{
     setError('');
     setOrderId(null);
     try {
-      const orderPayload: Partial<Omit<Order, 'id' | 'status' | 'createdAt'>> & FormData = {
-        ...formData,
-      };
-
+      let fileURL: string | undefined;
       if (selectedFile) {
-        const fileURL = await uploadImage(selectedFile, 'order-attachments');
-        orderPayload.fileURL = fileURL;
+        const uploadedFile = await uploadFile(selectedFile, 'order-attachments');
+        fileURL = uploadedFile.url;
       }
       
-      const newOrderId = await addOrder(orderPayload as Omit<Order, 'id' | 'status' | 'createdAt'>);
+      const newOrder = await addOrder({ ...formData, fileURL });
       
       setMessage(`Your order has been placed successfully!`);
-      setOrderId(newOrderId);
+      setOrderId(newOrder.id);
       setFormData({ customerName: '', contactNumber: '', email: '', details: '', service: '' });
       setFileName('');
       setSelectedFile(null);
@@ -184,7 +179,11 @@ const OrderStatusChecker: React.FC = () => {
         setMessage('');
         setOrder(null);
         try {
-            const result = await getOrderStatus(orderId.trim());
+            // In a real app with many orders, you'd have a dedicated API endpoint `GET /api/data/orders/:id`
+            // For simplicity here, we fetch all orders and filter client-side.
+            const allOrders = await listData<Order>('orders');
+            const result = allOrders.find(o => o.id === orderId.trim());
+
             if (result) {
                 setOrder(result);
             } else {
@@ -249,12 +248,15 @@ const CustomerView: React.FC = () => {
     const [offers, setOffers] = useState<Offer[]>([]);
 
     useEffect(() => {
-        const unsubPortfolio = listenToPortfolioItems(setPortfolioItems);
-        const unsubOffers = listenToOffers(setOffers);
-        return () => {
-            unsubPortfolio();
-            unsubOffers();
+        const fetchInitialData = async () => {
+            try {
+                setPortfolioItems(await getPortfolioItems());
+                setOffers(await getOffers());
+            } catch (error) {
+                console.error("Failed to fetch initial data:", error);
+            }
         };
+        fetchInitialData();
     }, []);
 
     const handleOrderInfoExtracted = (info: Partial<FormData>) => {
@@ -270,8 +272,7 @@ const CustomerView: React.FC = () => {
     const activeOffers = useMemo(() => offers.filter(offer => offer.status === 'Active'), [offers]);
 
   return (
-    <div className="min-h-screen">
-      <main>
+    <>
         {/* Hero Section */}
         <section className="min-h-[60vh] flex items-center justify-center text-center py-20 relative overflow-hidden">
              <div className="absolute inset-0 bg-primary-bg opacity-50"></div>
@@ -347,11 +348,10 @@ const CustomerView: React.FC = () => {
             </div>
           </div>
         </section>
-      </main>
       
       <WhatsAppButton />
       <Chatbot onOrderInfoExtracted={handleOrderInfoExtracted}/>
-    </div>
+    </>
   );
 };
 

@@ -1,20 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  auth,
-  signOut,
-  listenToOrders,
-  updateOrderStatus,
-  deleteOrder,
-  listenToPortfolioItems,
-  addPortfolioItem,
-  deletePortfolioItem,
-  updatePortfolioItemStatus,
-  listenToOffers,
-  addOffer,
-  deleteOffer,
-  updateOfferStatus,
-  uploadImage
-} from '../services/firebase';
+import React, { useState, useEffect, useCallback } from 'react';
+import { auth, signOut } from '../services/firebase';
+import { 
+    getOrders, 
+    getPortfolioItems, 
+    getOffers,
+    addPortfolioItem,
+    addOffer,
+    uploadFile,
+    updateData,
+    deleteData
+} from '../lib/api';
 import { Order, PortfolioItem, Offer, OrderStatus } from '../types';
 import DeliveryModal from '../components/DeliveryModal';
 import AdminModal from '../components/AdminModal';
@@ -35,35 +30,44 @@ const AdminView: React.FC = () => {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
     // Form states
-    const [portfolioForm, setPortfolioForm] = useState<Omit<PortfolioItem, 'id' | 'imageURL'>>({ title: '', description: '', status: 'Show' });
+    const [portfolioForm, setPortfolioForm] = useState<Omit<PortfolioItem, 'id' | 'imageURL' | 'url'>>({ title: '', description: '', status: 'Show' });
     const [portfolioFile, setPortfolioFile] = useState<File | null>(null);
-    const [offerForm, setOfferForm] = useState<Omit<Offer, 'id'>>({ title: '', description: '', price: '', status: 'Active' });
+    const [offerForm, setOfferForm] = useState<Omit<Offer, 'id' | 'url'>>({ title: '', description: '', price: '', status: 'Active' });
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
     
-    useEffect(() => {
-        setLoading(true);
-        const unsubOrders = listenToOrders(setOrders);
-        const unsubPortfolio = listenToPortfolioItems(setPortfolioItems);
-        const unsubOffers = listenToOffers(setOffers);
-        setLoading(false);
-
-        return () => {
-            unsubOrders();
-            unsubPortfolio();
-            unsubOffers();
-        };
+    const fetchData = useCallback(async () => {
+        try {
+            const [ordersData, portfolioData, offersData] = await Promise.all([
+                getOrders(),
+                getPortfolioItems(),
+                getOffers()
+            ]);
+            setOrders(ordersData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+            setPortfolioItems(portfolioData);
+            setOffers(offersData);
+        } catch (error) {
+            console.error("Failed to fetch data:", error);
+            alert("Could not fetch data from the server. Please check your connection and Blob Storage configuration.");
+        }
     }, []);
 
-    const handleLogout = () => {
-        signOut(auth);
-    };
+    useEffect(() => {
+        setLoading(true);
+        fetchData().finally(() => setLoading(false));
+
+        // Poll for new data every 10 seconds
+        const interval = setInterval(fetchData, 10000);
+        return () => clearInterval(interval);
+    }, [fetchData]);
+
+    const handleLogout = () => signOut(auth);
 
     const handleOpenDeliveryModal = (order: Order) => {
         setSelectedOrder(order);
         setIsDeliveryModalOpen(true);
     };
-
+    
     const resetPortfolioForm = () => {
         setPortfolioForm({ title: '', description: '', status: 'Show' });
         setPortfolioFile(null);
@@ -74,11 +78,12 @@ const AdminView: React.FC = () => {
         setOfferForm({ title: '', description: '', price: '', status: 'Active' });
         setFormError('');
     }
-    
-    const handleDeleteOrder = async (orderId: string) => {
+
+    const handleDeleteOrder = async (order: Order) => {
         if (window.confirm('Are you sure you want to delete this order? This action is irreversible.')) {
             try {
-                await deleteOrder(orderId);
+                await deleteData(order.url);
+                setOrders(prev => prev.filter(o => o.id !== order.id));
             } catch (e) {
                 alert('Failed to delete order.');
                 console.error(e);
@@ -86,9 +91,10 @@ const AdminView: React.FC = () => {
         }
     };
 
-    const handleUpdateStatus = async (orderId: string, status: OrderStatus) => {
+    const handleUpdateStatus = async (order: Order, status: OrderStatus) => {
         try {
-            await updateOrderStatus(orderId, status);
+            const updatedOrder = await updateData({ ...order, status });
+            setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
         } catch (e) {
             alert('Failed to update status.');
             console.error(e);
@@ -104,8 +110,9 @@ const AdminView: React.FC = () => {
         setFormLoading(true);
         setFormError('');
         try {
-            const imageURL = await uploadImage(portfolioFile, 'portfolio-images');
-            await addPortfolioItem({ ...portfolioForm, imageURL });
+            const { url: imageURL } = await uploadFile(portfolioFile, 'portfolio-images');
+            const newItem = await addPortfolioItem({ ...portfolioForm, imageURL });
+            setPortfolioItems(prev => [...prev, newItem]);
             setIsPortfolioModalOpen(false);
             resetPortfolioForm();
         } catch (err) {
@@ -116,17 +123,29 @@ const AdminView: React.FC = () => {
         }
     };
 
+    const handleUpdatePortfolioStatus = async (item: PortfolioItem, status: 'Show' | 'Hide') => {
+        try {
+            const updatedItem = await updateData({ ...item, status });
+            setPortfolioItems(prev => prev.map(p => p.id === updatedItem.id ? updatedItem : p));
+        } catch (e) {
+            alert('Failed to update status.');
+            console.error(e);
+        }
+    };
+
     const handleDeletePortfolioItem = async (item: PortfolioItem) => {
         if (window.confirm('Are you sure you want to delete this portfolio item?')) {
             try {
-                await deletePortfolioItem(item);
+                // Delete data and image file
+                await Promise.all([deleteData(item.url), deleteData(item.imageURL)]);
+                setPortfolioItems(prev => prev.filter(p => p.id !== item.id));
             } catch (err) {
                 alert('Failed to delete portfolio item.');
                 console.error(err);
             }
         }
     };
-
+    
     const handleOfferSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!offerForm.title || !offerForm.price) {
@@ -136,7 +155,8 @@ const AdminView: React.FC = () => {
         setFormLoading(true);
         setFormError('');
         try {
-            await addOffer(offerForm);
+            const newOffer = await addOffer(offerForm);
+            setOffers(prev => [...prev, newOffer]);
             setIsOfferModalOpen(false);
             resetOfferForm();
         } catch (err) {
@@ -147,10 +167,21 @@ const AdminView: React.FC = () => {
         }
     };
 
-    const handleDeleteOffer = async (offerId: string) => {
+     const handleUpdateOfferStatus = async (offer: Offer, status: 'Active' | 'Inactive') => {
+        try {
+            const updatedOffer = await updateData({ ...offer, status });
+            setOffers(prev => prev.map(o => o.id === updatedOffer.id ? updatedOffer : o));
+        } catch (e) {
+            alert('Failed to update status.');
+            console.error(e);
+        }
+    };
+
+    const handleDeleteOffer = async (offer: Offer) => {
         if (window.confirm('Are you sure you want to delete this offer?')) {
             try {
-                await deleteOffer(offerId);
+                await deleteData(offer.url);
+                setOffers(prev => prev.filter(o => o.id !== offer.id));
             } catch (err) {
                 alert('Failed to delete offer.');
                 console.error(err);
@@ -160,16 +191,10 @@ const AdminView: React.FC = () => {
     
     const inputStyles = "w-full p-3 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent text-white placeholder-gray-400";
     const statusTextStyles: { [key in OrderStatus]: string } = {
-        Pending: 'text-amber',
-        'In Progress': 'text-blue',
-        Completed: 'text-accent',
-        Cancelled: 'text-error',
+        Pending: 'text-amber', 'In Progress': 'text-blue', Completed: 'text-accent', Cancelled: 'text-error',
     };
     const tabButton = (key: 'orders' | 'portfolio' | 'offers', label: string) => (
-        <button
-            onClick={() => setActiveTab(key)}
-            className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 ${activeTab === key ? 'bg-accent text-primary-bg shadow-lg' : 'text-text-secondary hover:text-text-primary'}`}
-        >
+        <button onClick={() => setActiveTab(key)} className={`px-4 py-2 text-sm font-semibold rounded-full transition-all duration-300 ${activeTab === key ? 'bg-accent text-primary-bg shadow-lg' : 'text-text-secondary hover:text-text-primary'}`}>
             {label}
         </button>
     );
@@ -179,41 +204,30 @@ const AdminView: React.FC = () => {
             {orders.length > 0 ? (
                 orders.map(order => (
                     <div key={order.id} className="glass-card p-4 sm:p-6">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div className="flex-1">
                                 <h4 className="font-bold text-lg text-text-primary">{order.service}</h4>
                                 <p className="text-sm text-text-secondary">For: {order.customerName} ({order.email})</p>
                             </div>
                             <div className="flex items-center gap-4 w-full sm:w-auto">
-                                <select
-                                    value={order.status}
-                                    onChange={(e) => handleUpdateStatus(order.id, e.target.value as OrderStatus)}
-                                    className={`p-2 rounded bg-black bg-opacity-30 text-xs border-none appearance-none ${statusTextStyles[order.status]}`}
-                                >
+                                <select value={order.status} onChange={(e) => handleUpdateStatus(order, e.target.value as OrderStatus)} className={`p-2 rounded bg-black bg-opacity-30 text-xs border-none appearance-none ${statusTextStyles[order.status]}`}>
                                     <option value="Pending">Pending</option>
                                     <option value="In Progress">In Progress</option>
                                     <option value="Completed">Completed</option>
                                     <option value="Cancelled">Cancelled</option>
                                 </select>
                                 <div className="flex gap-2 text-xs">
-                                    <button
-                                        onClick={() => handleOpenDeliveryModal(order)}
-                                        className="font-medium text-accent hover:underline disabled:text-gray-500 disabled:cursor-not-allowed disabled:no-underline"
-                                        disabled={order.status === 'Completed' || order.status === 'Cancelled'}
-                                    >
+                                    <button onClick={() => handleOpenDeliveryModal(order)} className="font-medium text-accent hover:underline disabled:text-gray-500 disabled:cursor-not-allowed disabled:no-underline" disabled={order.status === 'Completed' || order.status === 'Cancelled'}>
                                         Deliver
                                     </button>
-                                    <button
-                                        onClick={() => handleDeleteOrder(order.id)}
-                                        className="font-medium text-error hover:underline"
-                                    >
+                                    <button onClick={() => handleDeleteOrder(order)} className="font-medium text-error hover:underline">
                                         Delete
                                     </button>
                                 </div>
                             </div>
                         </div>
                         <div className="mt-4 pt-4 border-t border-white border-opacity-10 text-sm text-text-secondary space-y-2">
-                            <p><strong className="text-text-primary">Date:</strong> {order.createdAt?.toDate().toLocaleDateString()}</p>
+                            <p><strong className="text-text-primary">Date:</strong> {new Date(order.createdAt).toLocaleDateString()}</p>
                             <p><strong className="text-text-primary">Description:</strong> {order.details}</p>
                             <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
                                 {order.fileURL && (
@@ -224,7 +238,7 @@ const AdminView: React.FC = () => {
                                 )}
                                 {order.deliveryFileURL && (
                                     <a href={order.deliveryFileURL} target="_blank" rel="noopener noreferrer" className="font-medium text-accent hover:underline text-xs flex items-center gap-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                                         View Delivered File
                                     </a>
                                 )}
@@ -253,7 +267,7 @@ const AdminView: React.FC = () => {
                             <h4 className="font-bold text-text-primary">{item.title}</h4>
                             <p className="text-xs text-text-secondary mb-2">{item.description}</p>
                             <div className="flex justify-between items-center">
-                                <select value={item.status} onChange={(e) => updatePortfolioItemStatus(item.id, e.target.value as 'Show' | 'Hide')} className="bg-black bg-opacity-20 text-xs p-1 rounded border-none">
+                                <select value={item.status} onChange={(e) => handleUpdatePortfolioStatus(item, e.target.value as 'Show' | 'Hide')} className="bg-black bg-opacity-20 text-xs p-1 rounded border-none">
                                     <option value="Show">Show</option>
                                     <option value="Hide">Hide</option>
                                 </select>
@@ -278,11 +292,11 @@ const AdminView: React.FC = () => {
                          <p className="text-lg font-bold">{offer.price}</p>
                          <p className="text-sm text-text-secondary my-2 flex-grow">{offer.description}</p>
                          <div className="flex justify-between items-center mt-4">
-                            <select value={offer.status} onChange={(e) => updateOfferStatus(offer.id, e.target.value as 'Active' | 'Inactive')} className="bg-black bg-opacity-20 text-xs p-1 rounded border-none">
+                            <select value={offer.status} onChange={(e) => handleUpdateOfferStatus(offer, e.target.value as 'Active' | 'Inactive')} className="bg-black bg-opacity-20 text-xs p-1 rounded border-none">
                                 <option value="Active">Active</option>
                                 <option value="Inactive">Inactive</option>
                             </select>
-                            <button onClick={() => handleDeleteOffer(offer.id)} className="text-error hover:underline text-xs">Delete</button>
+                            <button onClick={() => handleDeleteOffer(offer)} className="text-error hover:underline text-xs">Delete</button>
                          </div>
                     </div>
                 ))}
@@ -291,7 +305,7 @@ const AdminView: React.FC = () => {
     );
     
     if (loading) {
-        return <div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent"></div></div>;
+        return <div className="flex items-center justify-center min-h-[calc(100vh-200px)]"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-accent"></div></div>;
     }
 
     return (
@@ -314,10 +328,10 @@ const AdminView: React.FC = () => {
             </div>
             
             {isDeliveryModalOpen && selectedOrder && (
-                <DeliveryModal isOpen={isDeliveryModalOpen} onClose={() => setIsDeliveryModalOpen(false)} order={selectedOrder} />
+                <DeliveryModal isOpen={isDeliveryModalOpen} onClose={() => setIsDeliveryModalOpen(false)} order={selectedOrder} onOrderDelivered={fetchData} />
             )}
-
-            <AdminModal isOpen={isPortfolioModalOpen} onClose={() => setIsPortfolioModalOpen(false)} title="Add Portfolio Item">
+            
+             <AdminModal isOpen={isPortfolioModalOpen} onClose={() => setIsPortfolioModalOpen(false)} title="Add Portfolio Item">
                 <form onSubmit={handlePortfolioSubmit} className="space-y-4">
                     <input type="text" placeholder="Title" value={portfolioForm.title} onChange={e => setPortfolioForm(p => ({...p, title: e.target.value}))} className={inputStyles} required />
                     <textarea placeholder="Description" value={portfolioForm.description} onChange={e => setPortfolioForm(p => ({...p, description: e.target.value}))} className={inputStyles} rows={3}></textarea>

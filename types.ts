@@ -23,9 +23,10 @@ export interface Order {
   details: string;
   fileURL?: string;
   status: OrderStatus;
-  createdAt: any; // Firestore Timestamp
+  createdAt: string; // ISO Date String
   deliveryFileURL?: string;
   price?: string;
+  url: string; // URL of the blob in Vercel Storage
 }
 
 export interface PortfolioItem {
@@ -34,12 +35,14 @@ export interface PortfolioItem {
   description: string;
   imageURL: string;
   status: 'Show' | 'Hide';
+  url: string; // URL of the blob in Vercel Storage
 }
 
 export interface Offer {
-  id:string;
+  id: string;
   title: string;
   description: string;
   price: string;
   status: 'Active' | 'Inactive';
+  url: string; // URL of the blob in Vercel Storage
 }
